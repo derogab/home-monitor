@@ -6,13 +6,19 @@
 
 // Sensors
 // --------------
-// Active Buzzer
-#define ALARM D0
+// Buildi-In Led
+#define LED D0
 // Flame Detector
 #define FLAME D1
 // DHT11 - Temperature & Humidity Sensor
 #define DHTPIN D2
 #define DHTTYPE DHT11 // Sensor type: DHT 11
+#define DHTDELAY 2000 // Needed delay for DHT sensors
+// Photoresistor
+#define PHOTORESISTOR A0              // photoresistor pin
+#define PHOTORESISTOR_THRESHOLD 900   // turn led on for light values lesser than this
+// Active Buzzer
+#define ALARM D4
 
 // Init
 // --------------
@@ -30,14 +36,18 @@ void setup() {
   Serial.begin(115200);
 
   // Init PINs
+  pinMode(LED, OUTPUT); // Define LED output pin
   pinMode(FLAME, INPUT); // Define FLAME input pin
   pinMode(ALARM, OUTPUT); // Define ALARM output pin
+
+  // Turn LED OFF
+  digitalWrite(LED, HIGH);
 
   // Start DHT
   dht.begin();
 
   // Init delay
-  delay(2000);
+  delay(DHTDELAY);
 
 }
 
@@ -45,6 +55,23 @@ void loop() {
 
   // Get millis time
   currentTime = millis();
+
+
+  // PHOTORESISTOR
+  // -----------------------------
+  static unsigned int lightSensorValue;
+
+  lightSensorValue = analogRead(PHOTORESISTOR);   // read analog value (range 0-1023)
+  Serial.print(F("Light sensor value: "));
+  Serial.println(lightSensorValue);
+
+  if (lightSensorValue >= PHOTORESISTOR_THRESHOLD) {   // high brightness
+    Serial.println(F("LED = OFF"));
+    digitalWrite(LED, HIGH);                           // LED off
+  } else {                                             // low brightness
+    Serial.println(F("LED = ON"));
+    digitalWrite(LED, LOW);                            // LED on
+  }
 
 
   // FLAME ALARM
@@ -55,18 +82,17 @@ void loop() {
   if(fire == HIGH) {
     Serial.println("Fire! Fire!");
     digitalWrite(ALARM, LOW);   // Set the buzzer on by making the voltage LOW
-    delay(500);                // Wait for a second
+    delay(500);                 // Wait for a second
     digitalWrite(ALARM, HIGH);  // Set the buzzer off
   } else {
     digitalWrite(ALARM, HIGH);  // Set the buzzer off
   }
 
   // TEMPERATURE & HUMIDITY DETECTION
+  // -------------------------------
 
-  // Temp Delay
-  unsigned long tempDelay = 2000;
   // Check if frequency is good :)
-  if (currentTime - lastTempTime > tempDelay) {
+  if (currentTime - lastTempTime > DHTDELAY) {
 
     // Update reading time
     lastTempTime = currentTime;
