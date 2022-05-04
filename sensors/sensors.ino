@@ -11,9 +11,9 @@
 // Flame Detector
 #define FLAME D1
 // DHT11 - Temperature & Humidity Sensor
-#define DHTPIN D2
-#define DHTTYPE DHT11 // Sensor type: DHT 11
-#define DHTDELAY 2000 // Needed delay for DHT sensors
+#define DHT_PIN D2
+#define DHT_TYPE DHT11 // Sensor type: DHT 11
+#define DHT_DELAY 2000 // Needed delay for DHT sensors
 // Photoresistor
 #define PHOTORESISTOR A0              // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900   // turn led on for light values lesser than this
@@ -27,7 +27,7 @@ unsigned long currentTime;
 // Initialize temperature & humidity time
 unsigned long lastTempTime;
 // Initialize DHT sensor
-DHT dht = DHT(DHTPIN, DHTTYPE);
+DHT dht = DHT(DHT_PIN, DHT_TYPE);
 
 // CODE
 
@@ -47,7 +47,7 @@ void setup() {
   dht.begin();
 
   // Init delay
-  delay(DHTDELAY);
+  delay(DHT_DELAY);
 
 }
 
@@ -66,10 +66,8 @@ void loop() {
   Serial.println(lightSensorValue);
 
   if (lightSensorValue >= PHOTORESISTOR_THRESHOLD) {   // high brightness
-    Serial.println(F("LED = OFF"));
     digitalWrite(LED, HIGH);                           // LED off
   } else {                                             // low brightness
-    Serial.println(F("LED = ON"));
     digitalWrite(LED, LOW);                            // LED on
   }
 
@@ -92,7 +90,7 @@ void loop() {
   // -------------------------------
 
   // Check if frequency is good :)
-  if (currentTime - lastTempTime > DHTDELAY) {
+  if (currentTime - lastTempTime > DHT_DELAY) {
 
     // Update reading time
     lastTempTime = currentTime;
