@@ -152,10 +152,11 @@ void connectToWiFi() {
     WiFi.begin(ssid, pass);
     while (WiFi.status() != WL_CONNECTED) {
       #ifdef DEBUG
-        Serial.print(F("."));
-        delay(250);
+        Serial.print(F(".")); 
       #endif
+      delay(250);
     }
+    
     #ifdef DEBUG
       Serial.println(F("\nConnected!"));
     #endif
