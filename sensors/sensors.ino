@@ -31,8 +31,6 @@
 // WiFi signal
 #define RSSI_THRESHOLD -60            // WiFi signal strength threshold
 
-#define DB_DELAY 10000
-
 
 // Init
 // --------------
@@ -43,7 +41,8 @@ unsigned long lastTempTime = 0;
 // Initialize photoresistor log time
 unsigned long lastLightLogTime = 0;
 // Initialize database log time
-unsigned long lastDatabaseLog = 0;
+unsigned long lastRoomDatabaseLog = 0;
+unsigned long lastWifiDatabaseLog = 0;
 // Initialize DHT sensor
 DHT dht = DHT(DHT_PIN, DHT_TYPE);
 
@@ -63,6 +62,8 @@ WiFiClient client;
 InfluxDBClient client_idb(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
 Point pointDevice("device_status");
 Point pointRoom("room_status");
+#define WIFI_DATA_DB_DELAY 15000
+#define ROOM_DATA_DB_DELAY 5000
 
 // Init
 bool data_light;
@@ -138,7 +139,18 @@ void loop() {
     // Set as initialized    
     init_db = 1;
   }
-  WriteDeviceStatusToDB((int)rssi, led_status);   // write device status on InfluxDB
+  
+  // Write on DB
+  // Check if frequency is good :)
+  if (currentTime - lastWifiDatabaseLog > WIFI_DATA_DB_DELAY) {
+
+    // Update reading time
+    lastWifiDatabaseLog = currentTime;
+
+    // Write on DB
+    WriteDeviceStatusToDB((int)rssi, led_status);   // write device status on InfluxDB
+    
+  }
   
 
   // PHOTORESISTOR
@@ -218,10 +230,10 @@ void loop() {
 
   // Write on DB
   // Check if frequency is good :)
-  if (currentTime - lastDatabaseLog > DB_DELAY) {
+  if (currentTime - lastRoomDatabaseLog > ROOM_DATA_DB_DELAY) {
 
     // Update reading time
-    lastDatabaseLog = currentTime;
+    lastRoomDatabaseLog = currentTime;
 
     // Write on DB
     WriteRoomStatusToDB(data_temperature, data_apparent_temperature, data_humidity, data_light, data_flame, data_alarm);
@@ -319,17 +331,17 @@ int WriteDeviceStatusToDB(int rssi, int led_status) {
   return writing;
 }
 
-int WriteRoomStatusToDB(int temperature, int apparent_temperature, int humidity, int light, bool flame, bool alarm) {
+int WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, int light, bool flame, bool alarm) {
   int writing = 0;
   // Store measured value into point
   pointRoom.clearFields();
   // Report RSSI of currently connected network
-  pointRoom.addField("temperature", temperature);
-  pointRoom.addField("apparent_temperature", apparent_temperature);
-  pointRoom.addField("humidity", humidity);
-  pointRoom.addField("light", light);
-  pointRoom.addField("flame", flame);
-  pointRoom.addField("alarm", alarm);
+  pointRoom.addField("temperature_test", temperature);
+  pointRoom.addField("apparent_temperature_test", apparent_temperature);
+  pointRoom.addField("humidity_test", humidity);
+  pointRoom.addField("light_test", light);
+  pointRoom.addField("flame_test", flame);
+  pointRoom.addField("alarm_test", alarm);
   Serial.print(F("Writing: "));
   Serial.println(pointRoom.toLineProtocol());
   if (!client_idb.writePoint(pointRoom)) {
