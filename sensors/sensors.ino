@@ -316,8 +316,6 @@ int WriteDeviceStatusToDB(int rssi, int led_status) {
     writing = 1;
   }
 
-  Serial.println(F("Wait 2s"));
-  delay(2000);
   return writing;
 }
 
@@ -340,7 +338,5 @@ int WriteRoomStatusToDB(int temperature, int apparent_temperature, int humidity,
     writing = 1;
   }
 
-  Serial.println(F("Wait 2s"));
-  delay(2000);
   return writing;
 }
