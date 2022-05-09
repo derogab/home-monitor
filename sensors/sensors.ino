@@ -68,9 +68,9 @@ Point pointRoom("room_status");
 bool data_light;
 bool data_flame;
 bool data_alarm = false;
-int data_temperature;
-int data_apparent_temperature;
-int data_humidity;
+double data_temperature;
+double data_apparent_temperature;
+double data_humidity;
 
 // CODE
 
@@ -191,8 +191,8 @@ void loop() {
     lastTempTime = currentTime;
 
     // reading temperature or humidity takes about 250 milliseconds!
-    float h = dht.readHumidity();      // humidity percentage, range 20-80% (±5% accuracy)
-    float t = dht.readTemperature();   // temperature Celsius, range 0-50°C (±2°C accuracy)
+    double h = dht.readHumidity();      // humidity percentage, range 20-80% (±5% accuracy)
+    double t = dht.readTemperature();   // temperature Celsius, range 0-50°C (±2°C accuracy)
 
     if (isnan(h) || isnan(t)) {   // readings failed, skip
       Serial.println(F("Failed to read from DHT sensor!"));
@@ -200,7 +200,7 @@ void loop() {
     }
 
     // compute heat index in Celsius (isFahreheit = false)
-    float hic = dht.computeHeatIndex(t, h, false);
+    double hic = dht.computeHeatIndex(t, h, false);
 
     Serial.print(F("Humidity: "));
     Serial.print(h);
