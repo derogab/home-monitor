@@ -26,8 +26,6 @@
 #define PHOTORESISTOR A0              // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900   // turn led on for light values lesser than this
 #define PHOTORESISTOR_LOG_DELAY 1500
-// Active Buzzer
-#define ALARM D3
 // WiFi signal
 #define RSSI_THRESHOLD -60            // WiFi signal strength threshold
 
@@ -68,7 +66,6 @@ Point pointRoom("room_status");
 // Init
 bool data_light;
 bool data_flame;
-bool data_alarm = false;
 double data_temperature;
 double data_apparent_temperature;
 double data_humidity;
@@ -83,14 +80,10 @@ void setup() {
   pinMode(LED1, OUTPUT); // Define LED 1 output pin
   pinMode(LED2, OUTPUT); // Define LED 2 output pin
   pinMode(FLAME, INPUT); // Define FLAME input pin
-  pinMode(ALARM, OUTPUT); // Define ALARM output pin
 
   // Turn LEDs OFF
   digitalWrite(LED1, HIGH);
   digitalWrite(LED2, HIGH);
-
-  // Turn ALARM OFF
-  digitalWrite(ALARM, HIGH);
 
   // Start DHT
   dht.begin();
@@ -179,17 +172,15 @@ void loop() {
   }
 
 
-  // FLAME ALARM
+  // FLAME DETECTION
   // -----------------------------
 
   int fire = digitalRead(FLAME); // Read FLAME sensor
   
   if(fire == HIGH) {
     Serial.println("Fire! Fire!");
-    digitalWrite(ALARM, LOW);   // Set the buzzer on by making the voltage LOW
     data_flame = true;
   } else {
-    digitalWrite(ALARM, HIGH);  // Set the buzzer off
     data_flame = false;
   }
 
@@ -236,7 +227,7 @@ void loop() {
     lastRoomDatabaseLog = currentTime;
 
     // Write on DB
-    WriteRoomStatusToDB(data_temperature, data_apparent_temperature, data_humidity, data_light, data_flame, data_alarm);
+    WriteRoomStatusToDB(data_temperature, data_apparent_temperature, data_humidity, data_light, data_flame);
     
   }
 
@@ -331,7 +322,7 @@ int WriteDeviceStatusToDB(int rssi, int led_status) {
   return writing;
 }
 
-int WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, int light, bool flame, bool alarm) {
+int WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, int light, bool flame) {
   int writing = 0;
   // Store measured value into point
   pointRoom.clearFields();
@@ -341,7 +332,6 @@ int WriteRoomStatusToDB(double temperature, double apparent_temperature, double 
   pointRoom.addField("humidity_test", humidity);
   pointRoom.addField("light_test", light);
   pointRoom.addField("flame_test", flame);
-  pointRoom.addField("alarm_test", alarm);
   Serial.print(F("Writing: "));
   Serial.println(pointRoom.toLineProtocol());
   if (!client_idb.writePoint(pointRoom)) {
