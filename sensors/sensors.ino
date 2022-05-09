@@ -154,10 +154,10 @@ void loop() {
 
   if (lightSensorValue >= PHOTORESISTOR_THRESHOLD) {   // high brightness
     digitalWrite(LED1, HIGH);                          // LED off
-    data_light = false;
+    data_light = true;
   } else {                                             // low brightness
     digitalWrite(LED1, LOW);                           // LED on
-    data_light = true;
+    data_light = false;
   }
 
   // Check if frequency is good :)
@@ -322,11 +322,11 @@ int WriteDeviceStatusToDB(int rssi, int led_status) {
   return writing;
 }
 
-int WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, int light, bool flame) {
+int WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, bool light, bool flame) {
   int writing = 0;
   // Store measured value into point
   pointRoom.clearFields();
-  // Report RSSI of currently connected network
+  // Report all room status data on database
   pointRoom.addField("temperature_test", temperature);
   pointRoom.addField("apparent_temperature_test", apparent_temperature);
   pointRoom.addField("humidity_test", humidity);
