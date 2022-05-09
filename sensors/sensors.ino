@@ -25,10 +25,13 @@
 // Photoresistor
 #define PHOTORESISTOR A0              // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900   // turn led on for light values lesser than this
+#define PHOTORESISTOR_LOG_DELAY 1500
 // Active Buzzer
 #define ALARM D3
 // WiFi signal
 #define RSSI_THRESHOLD -60            // WiFi signal strength threshold
+
+#define DB_DELAY 10000
 
 
 // Init
@@ -36,7 +39,11 @@
 // Initialize millis var
 unsigned long currentTime;
 // Initialize temperature & humidity time
-unsigned long lastTempTime;
+unsigned long lastTempTime = 0;
+// Initialize photoresistor log time
+unsigned long lastLightLogTime = 0;
+// Initialize database log time
+unsigned long lastDatabaseLog = 0;
 // Initialize DHT sensor
 DHT dht = DHT(DHT_PIN, DHT_TYPE);
 
@@ -55,6 +62,15 @@ WiFiClient client;
 // InfluxDB cfg
 InfluxDBClient client_idb(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
 Point pointDevice("device_status");
+Point pointRoom("room_status");
+
+// Init
+bool data_light;
+bool data_flame;
+bool data_alarm = false;
+int data_temperature;
+int data_apparent_temperature;
+int data_humidity;
 
 // CODE
 
@@ -82,7 +98,7 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   // Init delay
-  delay(DHT_DELAY);
+  delay(2000);
 
 }
 
@@ -107,6 +123,22 @@ void loop() {
     led_status = HIGH;
     digitalWrite(LED2, led_status);
   }
+
+  // DATABASE
+  // -----------------------------
+  // Check database connection
+  check_influxdb();
+  // Check if previously initialized
+  if (init_db == 0) {
+    // Set TAG for Device Status
+    pointDevice.addTag("device", "ESP8266");
+    pointDevice.addTag("SSID", WiFi.SSID());
+    // Set TAG for Room Status
+    pointRoom.addTag("device", "ESP8266");
+    // Set as initialized    
+    init_db = 1;
+  }
+  WriteDeviceStatusToDB((int)rssi, led_status);   // write device status on InfluxDB
   
 
   // PHOTORESISTOR
@@ -114,13 +146,24 @@ void loop() {
   static unsigned int lightSensorValue;
 
   lightSensorValue = analogRead(PHOTORESISTOR);   // read analog value (range 0-1023)
-  Serial.print(F("Light sensor value: "));
-  Serial.println(lightSensorValue);
 
   if (lightSensorValue >= PHOTORESISTOR_THRESHOLD) {   // high brightness
     digitalWrite(LED1, HIGH);                          // LED off
+    data_light = false;
   } else {                                             // low brightness
     digitalWrite(LED1, LOW);                           // LED on
+    data_light = true;
+  }
+
+  // Check if frequency is good :)
+  if (currentTime - lastLightLogTime > PHOTORESISTOR_LOG_DELAY) {
+
+    // Update reading time
+    lastLightLogTime = currentTime;
+
+    // Logs
+    Serial.print(F("Light sensor value: "));
+    Serial.println(lightSensorValue);
   }
 
 
@@ -132,10 +175,10 @@ void loop() {
   if(fire == HIGH) {
     Serial.println("Fire! Fire!");
     digitalWrite(ALARM, LOW);   // Set the buzzer on by making the voltage LOW
-    delay(250);                 // Wait for a second
-    digitalWrite(ALARM, HIGH);  // Set the buzzer off
+    data_flame = true;
   } else {
     digitalWrite(ALARM, HIGH);  // Set the buzzer off
+    data_flame = false;
   }
 
   // TEMPERATURE & HUMIDITY DETECTION
@@ -161,11 +204,27 @@ void loop() {
 
     Serial.print(F("Humidity: "));
     Serial.print(h);
+    data_humidity = h;
     Serial.print(F("%  Temperature: "));
     Serial.print(t);
+    data_temperature = t;
     Serial.print(F("°C  Apparent temperature: "));   // the temperature perceived by humans (takes into account humidity)
     Serial.print(hic);
+    data_apparent_temperature = hic;
     Serial.println(F("°C"));
+    
+  }
+
+
+  // Write on DB
+  // Check if frequency is good :)
+  if (currentTime - lastDatabaseLog > DB_DELAY) {
+
+    // Update reading time
+    lastDatabaseLog = currentTime;
+
+    // Write on DB
+    WriteRoomStatusToDB(data_temperature, data_apparent_temperature, data_humidity, data_light, data_flame, data_alarm);
     
   }
 
@@ -219,7 +278,7 @@ long connectToWiFi() {
     WiFi.begin(ssid, pass);
     while (WiFi.status() != WL_CONNECTED) {
       Serial.print(F("."));
-      delay(250);
+      delay(150);
     }
     Serial.println(F("\nConnected!"));
     rssi_strength = WiFi.RSSI();   // get wifi signal strength
@@ -242,7 +301,7 @@ void check_influxdb() {
   }
 }
 
-int WriteMultiToDB(char ssid[], int rssi, int led_status) {
+int WriteDeviceStatusToDB(int rssi, int led_status) {
   int writing = 0;
   // Store measured value into point
   pointDevice.clearFields();
@@ -252,6 +311,30 @@ int WriteMultiToDB(char ssid[], int rssi, int led_status) {
   Serial.print(F("Writing: "));
   Serial.println(pointDevice.toLineProtocol());
   if (!client_idb.writePoint(pointDevice)) {
+    Serial.print(F("InfluxDB write failed: "));
+    Serial.println(client_idb.getLastErrorMessage());
+    writing = 1;
+  }
+
+  Serial.println(F("Wait 2s"));
+  delay(2000);
+  return writing;
+}
+
+int WriteRoomStatusToDB(int temperature, int apparent_temperature, int humidity, int light, bool flame, bool alarm) {
+  int writing = 0;
+  // Store measured value into point
+  pointRoom.clearFields();
+  // Report RSSI of currently connected network
+  pointRoom.addField("temperature", temperature);
+  pointRoom.addField("apparent_temperature", apparent_temperature);
+  pointRoom.addField("humidity", humidity);
+  pointRoom.addField("light", light);
+  pointRoom.addField("flame", flame);
+  pointRoom.addField("alarm", alarm);
+  Serial.print(F("Writing: "));
+  Serial.println(pointRoom.toLineProtocol());
+  if (!client_idb.writePoint(pointRoom)) {
     Serial.print(F("InfluxDB write failed: "));
     Serial.println(client_idb.getLastErrorMessage());
     writing = 1;
