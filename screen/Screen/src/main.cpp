@@ -4,6 +4,7 @@
  *  D2 SDA
  *  D3 CLK
  *  D4 DT
+ *  D5 SW
  */
  
 #define DEBUG
@@ -16,8 +17,6 @@
 #include "secrets.h"
 #include <InfluxDbClient.h>
 
-#include "helpers.h"
-
 #define ROTARY_PIN1  D3
 #define ROTARY_PIN2 D4
 #define CLICKS_PER_STEP   4   // this number depends on your rotary encoder 
@@ -25,6 +24,9 @@
 #define DISPLAY_CHARS 16    // number of characters on a line
 #define DISPLAY_LINES 2     // number of display lines
 #define DISPLAY_ADDR 0x27   // display address on I2C bus
+
+#define BUTTON D5                  // button pin, eg. D1 is GPIO5 and has an optional internal pull-up
+#define BUTTON_DEBOUNCE_DELAY 200  // button debounce time in ms
 
 // WiFi cfg
 char ssid[] = SECRET_SSID;   // your network SSID (name)
@@ -44,17 +46,22 @@ Point pointDevice("device_status");
 LiquidCrystal_I2C lcd(DISPLAY_ADDR, DISPLAY_CHARS, DISPLAY_LINES);   // display object
 ESPRotary rot;
 
-byte displayMode = 0;
+volatile byte displayMode = 0;
 bool dispChangeMode = 0;
 unsigned long lastQueryTime = 0;
 unsigned long queryDelay = 10000;
+
+unsigned long last_interrupt = 0;
+volatile bool alarm_active = true;
 
 void incDisp(ESPRotary&);
 void decDisp(ESPRotary&);
 void connectToWiFi();
 void check_influxdb();
 double getFieldResultDouble(String);
-double getFieldResultBool(String);
+bool getFieldResultBool(String);
+long getFieldResultLong(String);
+void IRAM_ATTR buttonInterrupt();
 
 void setup() {
 
@@ -63,6 +70,10 @@ void setup() {
   Wire.begin();
   Wire.beginTransmission(DISPLAY_ADDR);
   byte error = Wire.endTransmission();
+
+  // set BUTTON pin as input with pull-up
+  pinMode(BUTTON, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON), buttonInterrupt, FALLING);
 
   if (error == 0) {
     #ifdef DEBUG
@@ -78,8 +89,8 @@ void setup() {
       Serial.println(F("Check connections and configuration. Reset to try again!"));
     #endif
     
-    //while (true)
-      //delay(1);
+    while (true)
+      delay(1);
   }
 
   WiFi.mode(WIFI_STA);
@@ -91,6 +102,13 @@ void setup() {
   dispChangeMode = 1;
 }
 
+double humidity;
+double temperature;
+double apparent_temperature;
+bool light;
+bool flame;
+long rssi;
+
 void loop() {
   rot.loop();
   unsigned long timeNow = millis();
@@ -99,31 +117,21 @@ void loop() {
     lastQueryTime = timeNow;
     check_influxdb();
     
-    //TODO query vere
-    double resultA =  getFieldResultDouble("A");
-    double resultB =  getFieldResultDouble("B");
-    bool resultC =  getFieldResultBool("C");
+    humidity =  getFieldResultDouble("humidity");
+    temperature =  getFieldResultDouble("temperature");
+    apparent_temperature = getFieldResultDouble("apparent_temperature");
+    light = getFieldResultBool("light");
+    flame = getFieldResultBool("flame");
+    rssi = getFieldResultLong("rssi");
 
     #ifdef DEBUG
-      Serial.printf("A: %2.2f \n", resultA);
-      Serial.printf("B: %2.2f \n", resultB);
-      Serial.printf("C: %s \n", resultC?"true":"false");
+      Serial.printf("humidity: %2.2f \n", humidity);
+      Serial.printf("temperature: %2.2f \n", temperature);
+      Serial.printf("apparent_temperature: %2.2f \n", apparent_temperature);
+      Serial.printf("light: %s \n", light?"true":"false");
+      Serial.printf("flame: %s \n", flame?"true":"false");      
+      Serial.printf("rssi: %ld \n", rssi);
     #endif
-  }
-
-  if(dispChangeMode){
-    lcd.home();
-    lcd.clear();
-
-    //TODO print vere
-    if(displayMode == 0){
-      lcd.print("mod0");
-    } else if (displayMode == 1){
-      lcd.print("mod1");
-    } else if (displayMode == 2){
-      lcd.print("mod2");
-    }
-    dispChangeMode = 0;
   }
 }
 
@@ -131,7 +139,7 @@ void loop() {
 
 void incDisp(ESPRotary& r) {
   displayMode++;
-  displayMode = displayMode % 3;
+  displayMode = displayMode % 5;
   dispChangeMode = 1;
 
   #ifdef DEBUG
@@ -141,7 +149,7 @@ void incDisp(ESPRotary& r) {
 
 void decDisp(ESPRotary& r) {
   if (displayMode == 0){
-    displayMode = 2;
+    displayMode = 5;
   } else {
     displayMode = displayMode - 1;
   }
@@ -190,8 +198,9 @@ void check_influxdb() {
 }
 
 double getFieldResultDouble(String field) {
+  String bucket = INFLUXDB_BUCKET;
   // Construct a Flux query
-  String query = "from(bucket: \"fdilauro2-bucket\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
+  String query = "from(bucket: \"" + bucket + "\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
 
   #ifdef DEBUG
     // Print composed query
@@ -217,7 +226,7 @@ double getFieldResultDouble(String field) {
   return value;
 }
 
-double getFieldResultBool(String field) {
+bool getFieldResultBool(String field) {
   // Construct a Flux query
   String query = "from(bucket: \"fdilauro2-bucket\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
 
@@ -243,4 +252,62 @@ double getFieldResultBool(String field) {
   }
   result.close();
   return value;
+}
+
+long getFieldResultLong(String field) {
+  // Construct a Flux query
+  String query = "from(bucket: \"fdilauro2-bucket\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
+
+  #ifdef DEBUG
+    // Print composed query
+    Serial.print("Querying with: ");
+    Serial.println(query);
+  #endif
+  
+  // Send query to the server and get result
+  FluxQueryResult result = client_idb.query(query);
+  bool value = 0;
+  // Iterate over rows. Even there is just one row, next() must be called at least once.
+  while (result.next()) {
+    value = result.getValueByName("_value").getLong();
+  }
+  // Check if there was an error
+  if(result.getError() != "") {
+    #ifdef DEBUG
+      Serial.print("Query result error: ");
+      Serial.println(result.getError());
+    #endif
+  }
+  result.close();
+  return value;
+}
+
+void IRAM_ATTR buttonInterrupt(){
+  unsigned long now = millis();
+  if (now - last_interrupt > BUTTON_DEBOUNCE_DELAY){
+      alarm_active = !alarm_active;
+      last_interrupt = now;
+      if (displayMode == 5){
+        displayMode = 0;
+      } else {
+        displayMode++;
+      }
+
+      lcd.home();
+      lcd.clear();
+
+      //TODO print vere
+      if(displayMode == 0){
+        lcd.printf("humidity: %2.2f ", humidity);
+      } else if (displayMode == 1){
+        lcd.printf("temperature: %2.2f \n", temperature);
+      } else if (displayMode == 2){
+        lcd.printf("apparent temperature: %2.2f \n", apparent_temperature);
+      } else if (displayMode == 3){
+        lcd.printf("light: %s", light?"true":"false");
+      } else if (displayMode == 4){
+        lcd.printf("flame: %s", flame?"true":"false");
+      }
+    }
+
 }
