@@ -1,12 +1,3 @@
-/*  PINOUT:
- *
- *  D1 SCL
- *  D2 SDA
- *  D3 CLK
- *  D4 DT
- *  D5 SW
- */
-
 #define DEBUG
 
 #include <LiquidCrystal_I2C.h> // display library
@@ -46,9 +37,8 @@ Point pointDevice("device_status");
 
 LiquidCrystal_I2C lcd(DISPLAY_ADDR, DISPLAY_CHARS, DISPLAY_LINES); // display object
 
-
 unsigned long lastQueryTime = 0;
-unsigned long queryDelay = 10000;
+unsigned long queryDelay = 5000;
 
 volatile byte displayMode = 0;
 
@@ -130,7 +120,8 @@ long rssi;
 void loop()
 {
   unsigned long timeNow = millis();
-  if (timeNow - last_interrupt_alarm > 2000 && change_alarm){
+  if (timeNow - last_interrupt_alarm > 2000 && change_alarm)
+  {
     printDisplayInfo();
     change_alarm = false;
   }
@@ -146,12 +137,12 @@ void loop()
     lastQueryTime = timeNow;
     check_influxdb();
 
-    humidity = getFieldResultDouble("humidity_test");
-    temperature = getFieldResultDouble("temperature_test");
-    apparent_temperature = getFieldResultDouble("apparent_temperature_test");
-    light = getFieldResultBool("light_test");
-    flame = getFieldResultBool("flame_test");
-    rssi = getFieldResultLong("rssi_test");
+    humidity = getFieldResultDouble("humidity");
+    temperature = getFieldResultDouble("temperature");
+    apparent_temperature = getFieldResultDouble("apparent_temperature");
+    light = getFieldResultBool("light");
+    flame = getFieldResultBool("flame");
+    rssi = getFieldResultLong("rssi");
 
     printDisplayInfo();
 
@@ -217,7 +208,7 @@ void IRAM_ATTR buttonInterrupt()
     lcd.clear();
     lcd.printf("Alarm state:");
     lcd.setCursor(0, 1);
-    lcd.printf("%s", alarm_active ? "true" : "false");
+    lcd.printf("%s", alarm_active ? "ON" : "OFF");
 
     if (alarm_active && flame)
       digitalWrite(BUZZER, HIGH);
@@ -231,42 +222,41 @@ void printDisplayInfo()
   lcd.home();
   lcd.clear();
 
-  // TODO print vere
   if (displayMode == 0)
   {
     lcd.printf("Humidity:");
     lcd.setCursor(0, 1);
-    lcd.printf("%2.2f", humidity);
+    lcd.printf("%2.2f %%", humidity);
   }
   else if (displayMode == 1)
   {
     lcd.printf("Temp:");
     lcd.setCursor(0, 1);
-    lcd.printf("%2.2f", temperature);
+    lcd.printf("%2.2f C", temperature);
   }
   else if (displayMode == 2)
   {
     lcd.printf("Apparent temp:");
     lcd.setCursor(0, 1);
-    lcd.printf("%2.2f", apparent_temperature);
+    lcd.printf("%2.2f C", apparent_temperature);
   }
   else if (displayMode == 3)
   {
     lcd.printf("Light:");
     lcd.setCursor(0, 1);
-    lcd.printf("%s", light ? "true" : "false");
+    lcd.printf("%s", light ? "ON" : "OFF");
   }
   else if (displayMode == 4)
   {
-    lcd.printf("Flame:");
+    lcd.printf("Fire:");
     lcd.setCursor(0, 1);
-    lcd.printf("%s", flame ? "true" : "false");
+    lcd.printf("%s", flame ? "YES" : "NO");
   }
   else if (displayMode == 5)
   {
-    lcd.printf("RSSI:");
+    lcd.printf("WiFi Signal:");
     lcd.setCursor(0, 1);
-    lcd.printf("%ld", rssi);
+    lcd.printf("%ld dB", rssi);
   }
 }
 
@@ -352,9 +342,9 @@ double getFieldResultDouble(String field)
 
 bool getFieldResultBool(String field)
 {
+  String bucket = INFLUXDB_BUCKET;
   // Construct a Flux query
-  String query = "from(bucket: \"fdilauro2-bucket\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
-
+  String query = "from(bucket: \"" + bucket + "\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
 #ifdef DEBUG
   // Print composed query
   Serial.print("Querying with: ");
@@ -383,8 +373,9 @@ bool getFieldResultBool(String field)
 
 long getFieldResultLong(String field)
 {
+  String bucket = INFLUXDB_BUCKET;
   // Construct a Flux query
-  String query = "from(bucket: \"fdilauro2-bucket\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
+  String query = "from(bucket: \"" + bucket + "\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
 
 #ifdef DEBUG
   // Print composed query
@@ -394,7 +385,7 @@ long getFieldResultLong(String field)
 
   // Send query to the server and get result
   FluxQueryResult result = client_idb.query(query);
-  bool value = 0;
+  long value = 0;
   // Iterate over rows. Even there is just one row, next() must be called at least once.
   while (result.next())
   {
