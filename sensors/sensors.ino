@@ -11,6 +11,9 @@
 // Include SECRETs
 #include "secrets.h"
 
+// Init Mode
+//#define DEBUG true
+
 // Sensors
 // --------------
 // Buildi-In LEDs
@@ -60,8 +63,8 @@ WiFiClient client;
 InfluxDBClient client_idb(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
 Point pointDevice("device_status");
 Point pointRoom("room_status");
-#define WIFI_DATA_DB_DELAY 15000
-#define ROOM_DATA_DB_DELAY 5000
+#define WIFI_DATA_DB_DELAY 10000
+#define ROOM_DATA_DB_DELAY 4000
 
 // Init
 bool data_light;
@@ -166,9 +169,11 @@ void loop() {
     // Update reading time
     lastLightLogTime = currentTime;
 
-    // Logs
-    Serial.print(F("Light sensor value: "));
-    Serial.println(lightSensorValue);
+    #ifdef DEBUG
+      // Logs
+      Serial.print(F("Light sensor value: "));
+      Serial.println(lightSensorValue);
+    #endif
   }
 
 
@@ -178,7 +183,11 @@ void loop() {
   int fire = digitalRead(FLAME); // Read FLAME sensor
   
   if(fire == HIGH) {
-    Serial.println("Fire! Fire!");
+
+    #ifdef DEBUG
+      Serial.println("Fire! Fire!");
+    #endif
+    
     data_flame = true;
   } else {
     data_flame = false;
@@ -205,16 +214,19 @@ void loop() {
     // compute heat index in Celsius (isFahreheit = false)
     double hic = dht.computeHeatIndex(t, h, false);
 
-    Serial.print(F("Humidity: "));
-    Serial.print(h);
     data_humidity = h;
-    Serial.print(F("%  Temperature: "));
-    Serial.print(t);
     data_temperature = t;
-    Serial.print(F("°C  Apparent temperature: "));   // the temperature perceived by humans (takes into account humidity)
-    Serial.print(hic);
     data_apparent_temperature = hic;
-    Serial.println(F("°C"));
+
+    #ifdef DEBUG
+      Serial.print(F("Humidity: "));
+      Serial.print(h);   
+      Serial.print(F("%  Temperature: "));
+      Serial.print(t);
+      Serial.print(F("°C  Apparent temperature: "));   // the temperature perceived by humans (takes into account humidity)
+      Serial.print(hic);
+      Serial.println(F("°C"));
+    #endif
     
   }
 
@@ -277,15 +289,26 @@ long connectToWiFi() {
     WiFi.config(ip, dns, gateway, subnet);   // by default network is configured using DHCP
 #endif
 
-    Serial.print("Connecting to Wifi");
+    #ifdef DEBUG
+      Serial.print(F("Connecting"));
+    #endif
     WiFi.begin(ssid, pass);
     while (WiFi.status() != WL_CONNECTED) {
-      Serial.print(F("."));
+      #ifdef DEBUG
+        Serial.print(F("."));
+      #endif
       delay(150);
     }
-    Serial.println(F("\nConnected!"));
+    #ifdef DEBUG
+      Serial.println(F("\nConnected!"));
+    #endif
+    
     rssi_strength = WiFi.RSSI();   // get wifi signal strength
-    printWifiStatus();
+    
+    #ifdef DEBUG
+      printWifiStatus();
+    #endif
+  
   } else {
     rssi_strength = WiFi.RSSI();   // get wifi signal strength
   }
@@ -295,50 +318,61 @@ long connectToWiFi() {
 
 void check_influxdb() {
   // Check server connection
-  if (client_idb.validateConnection()) {
-    Serial.print(F("Connected to InfluxDB: "));
-    Serial.println(client_idb.getServerUrl());
-  } else {
+  if (!client_idb.validateConnection()) {
     Serial.print(F("InfluxDB connection failed: "));
     Serial.println(client_idb.getLastErrorMessage());
   }
+  else {
+
+    // Get Server URL
+    String url = client_idb.getServerUrl();
+
+    #ifdef DEBUG
+      Serial.print(F("Connected to InfluxDB: "));
+      Serial.println(url);
+    #endif
+  }
 }
 
-int WriteDeviceStatusToDB(int rssi, int led_status) {
-  int writing = 0;
+void WriteDeviceStatusToDB(int rssi, int led_status) {
   // Store measured value into point
   pointDevice.clearFields();
   // Report RSSI of currently connected network
   pointDevice.addField("rssi", rssi);
   pointDevice.addField("led_status", led_status);
-  Serial.print(F("Writing: "));
-  Serial.println(pointDevice.toLineProtocol());
+
+  #ifdef DEBUG
+    Serial.print(F("Writing: "));
+    Serial.println(pointDevice.toLineProtocol());
+  #endif
+  
+  // Write on DB
   if (!client_idb.writePoint(pointDevice)) {
     Serial.print(F("InfluxDB write failed: "));
     Serial.println(client_idb.getLastErrorMessage());
-    writing = 1;
   }
 
-  return writing;
 }
 
-int WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, bool light, bool flame) {
-  int writing = 0;
+void WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, bool light, bool flame) {
   // Store measured value into point
   pointRoom.clearFields();
   // Report all room status data on database
-  pointRoom.addField("temperature_test", temperature);
-  pointRoom.addField("apparent_temperature_test", apparent_temperature);
-  pointRoom.addField("humidity_test", humidity);
-  pointRoom.addField("light_test", light);
-  pointRoom.addField("flame_test", flame);
-  Serial.print(F("Writing: "));
-  Serial.println(pointRoom.toLineProtocol());
+  pointRoom.addField("temperature", temperature);
+  pointRoom.addField("apparent_temperature", apparent_temperature);
+  pointRoom.addField("humidity", humidity);
+  pointRoom.addField("light", light);
+  pointRoom.addField("flame", flame);
+  
+  #ifdef DEBUG
+    Serial.print(F("Writing: "));
+    Serial.println(pointRoom.toLineProtocol());
+  #endif
+  
+  // Write on DB
   if (!client_idb.writePoint(pointRoom)) {
     Serial.print(F("InfluxDB write failed: "));
     Serial.println(client_idb.getLastErrorMessage());
-    writing = 1;
   }
 
-  return writing;
 }
