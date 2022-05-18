@@ -13,7 +13,7 @@ An IOT project for Home Monitor
 - sottoscrive alle robe di sensori
 - sottoscrive per capire quali schede sono in rete
 
-# sensors
+## sensors
 
 - pubblica messaggi di sensori
 - pubblica messaggio setup
