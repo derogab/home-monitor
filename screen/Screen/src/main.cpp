@@ -2,23 +2,28 @@
 
 #include <LiquidCrystal_I2C.h> // display library
 #include <Wire.h>              // I2C library
+#include <ArduinoJson.h>
+#include <MQTT.h>
 
 #include <ESP8266WiFi.h>
 #include "secrets.h"
-#include <InfluxDbClient.h>
 
 #define DISPLAY_CHARS 16  // number of characters on a line
 #define DISPLAY_LINES 2   // number of display lines
 #define DISPLAY_ADDR 0x27 // display address on I2C bus
+#define DISPLAY_MODE_N 6
 
 #define incPin D3
 #define decPin D4
-#define BUTTON D5                 // button pin, eg. D1 is GPIO5 and has an optional internal pull-up
+#define ALARM_BUTTON D5           
 #define BUTTON_DEBOUNCE_DELAY 200 // button debounce time in ms
 
 #define BUZZER D8
 
-#define DISPLAY_MODE_N 6
+#define MQTT_BUFFER_SIZE 1024               // the maximum size for packets being published and received
+MQTTClient mqttClient(MQTT_BUFFER_SIZE);   // handles the MQTT communication protocol
+WiFiClient networkClient;                  // handles the network connection to the MQTT broker
+#define MQTT_TOPIC_DEVICES "unishare/devices/all_devices" 
 
 // WiFi cfg
 char ssid[] = SECRET_SSID; // your network SSID (name)
@@ -29,35 +34,27 @@ IPAddress subnet(SUBNET);
 IPAddress dns(DNS);
 IPAddress gateway(GATEWAY);
 #endif
-WiFiClient client;
-
-// InfluxDB cfg
-InfluxDBClient client_idb(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-Point pointDevice("device_status");
 
 LiquidCrystal_I2C lcd(DISPLAY_ADDR, DISPLAY_CHARS, DISPLAY_LINES); // display object
-
-unsigned long lastQueryTime = 0;
-unsigned long queryDelay = 5000;
 
 volatile byte displayMode = 0;
 
 unsigned long last_interrupt_inc = 0;
 unsigned long last_interrupt_dec = 0;
 unsigned long last_interrupt_alarm = 0;
+unsigned long last_connect_time = 0;
+unsigned long connect_delay = 5000;
 
 volatile bool alarm_active = true;
 volatile bool change_alarm = false;
 
 void connectToWiFi();
-void check_influxdb();
-double getFieldResultDouble(String);
-bool getFieldResultBool(String);
-long getFieldResultLong(String);
 void IRAM_ATTR buttonInterrupt();
 void IRAM_ATTR isrInc();
 void IRAM_ATTR isrDec();
 void printDisplayInfo();
+void connectToMQTTBroker();
+void mqttMessageReceived(String &topic, String &payload);
 
 void setup()
 {
@@ -68,14 +65,14 @@ void setup()
   Wire.beginTransmission(DISPLAY_ADDR);
   byte error = Wire.endTransmission();
 
-  // set BUTTON pin as input with pull-up
-  pinMode(BUTTON, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(BUTTON), buttonInterrupt, FALLING);
+  // // set BUTTON pin as input with pull-up
+  // pinMode(ALARM_BUTTON, INPUT_PULLUP);
+  // attachInterrupt(digitalPinToInterrupt(ALARM_BUTTON), buttonInterrupt, FALLING);
 
-  pinMode(incPin, INPUT_PULLUP);
-  pinMode(decPin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(incPin), isrInc, FALLING);
-  attachInterrupt(digitalPinToInterrupt(decPin), isrDec, FALLING);
+  // pinMode(incPin, INPUT_PULLUP);
+  // pinMode(decPin, INPUT_PULLUP);
+  // attachInterrupt(digitalPinToInterrupt(incPin), isrInc, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(decPin), isrDec, FALLING);
 
   pinMode(BUZZER, OUTPUT);
   digitalWrite(BUZZER, LOW);
@@ -108,6 +105,10 @@ void setup()
   lcd.print("Home");
   lcd.setCursor(0, 1);
   lcd.print("Monitor");
+
+  // setup MQTT
+  mqttClient.begin(MQTT_BROKERIP, 1883, networkClient);   // setup communication with MQTT broker
+  mqttClient.onMessage(mqttMessageReceived);              // callback on message received from MQTT broker
 }
 
 double humidity;
@@ -118,43 +119,39 @@ bool flame;
 long rssi;
 
 void loop()
-{
-  unsigned long timeNow = millis();
-  if (timeNow - last_interrupt_alarm > 2000 && change_alarm)
-  {
-    printDisplayInfo();
-    change_alarm = false;
-  }
+{ 
+  connectToWiFi();   // connect to WiFi (if not already connected)
 
-  if (alarm_active && flame)
-    digitalWrite(BUZZER, HIGH);
-  else
-    digitalWrite(BUZZER, LOW);
+  connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
 
-  if (timeNow - lastQueryTime > queryDelay)
-  {
-    connectToWiFi(); // WiFi connect if not established and if connected get wifi signal strength
-    lastQueryTime = timeNow;
-    check_influxdb();
+  if(!mqttClient.loop())
+    Serial.println(mqttClient.lastError());
 
-    humidity = getFieldResultDouble("humidity");
-    temperature = getFieldResultDouble("temperature");
-    apparent_temperature = getFieldResultDouble("apparent_temperature");
-    light = getFieldResultBool("light");
-    flame = getFieldResultBool("flame");
-    rssi = getFieldResultLong("rssi");
+  delay(10);
 
-    printDisplayInfo();
+  // unsigned long timeNow = millis();
+  // if (timeNow - last_connect_time > connect_delay)
+  // {
+  //   last_connect_time = timeNow;
+  //   connectToWiFi(); // WiFi connect if not established and if connected get wifi signal strength
+  //   connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
+  // }
 
-#ifdef DEBUG
-    Serial.printf("humidity: %2.2f \n", humidity);
-    Serial.printf("temperature: %2.2f \n", temperature);
-    Serial.printf("apparent_temperature: %2.2f \n", apparent_temperature);
-    Serial.printf("light: %s \n", light ? "true" : "false");
-    Serial.printf("flame: %s \n", flame ? "true" : "false");
-    Serial.printf("rssi: %ld \n", rssi);
-#endif
-  }
+  // if (alarm_active && flame)
+  //   digitalWrite(BUZZER, HIGH);
+  // else
+  //   digitalWrite(BUZZER, LOW);
+  
+  // mqttClient.loop();       // MQTT client loop
+    
+// #ifdef DEBUG
+//     Serial.printf("humidity: %2.2f \n", humidity);
+//     Serial.printf("temperature: %2.2f \n", temperature);
+//     Serial.printf("apparent_temperature: %2.2f \n", apparent_temperature);
+//     Serial.printf("light: %s \n", light ? "true" : "false");
+//     Serial.printf("flame: %s \n", flame ? "true" : "false");
+//     Serial.printf("rssi: %ld \n", rssi);
+// #endif
 }
 
 // Helpers
@@ -289,116 +286,31 @@ void connectToWiFi()
   }
 }
 
-void check_influxdb()
-{
-  // Check server connection
-  if (client_idb.validateConnection())
-  {
-#ifdef DEBUG
-    Serial.print(F("Connected to InfluxDB: "));
-    Serial.println(client_idb.getServerUrl());
-#endif
-  }
-  else
-  {
-#ifdef DEBUG
-    Serial.print(F("InfluxDB connection failed: "));
-    Serial.println(client_idb.getLastErrorMessage());
-#endif
+void connectToMQTTBroker() {
+  if (!mqttClient.connected()) {   // not connected
+    Serial.print(F("\nConnecting to MQTT broker..."));
+    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD)) {
+      Serial.print(F("."));
+      delay(1000);
+    }
+    Serial.println(F("\nConnected!"));
+
+    // connected to broker, subscribe topics
+    mqttClient.subscribe(MQTT_TOPIC_DEVICES);
+    Serial.println(F("\nSubscribed to devices topic!"));
   }
 }
 
-double getFieldResultDouble(String field)
-{
-  String bucket = INFLUXDB_BUCKET;
-  // Construct a Flux query
-  String query = "from(bucket: \"" + bucket + "\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
+void mqttMessageReceived(String &topic, String &payload) {
+  // this function handles a message from the MQTT broker
+  Serial.println("Incoming MQTT message: " + topic + " - " + payload);
 
-#ifdef DEBUG
-  // Print composed query
-  Serial.print("Querying with: ");
-  Serial.println(query);
-#endif
+  StaticJsonDocument<1024> doc;
+  deserializeJson(doc, payload);
 
-  // Send query to the server and get result
-  FluxQueryResult result = client_idb.query(query);
-  double value = 0;
-  // Iterate over rows. Even there is just one row, next() must be called at least once.
-  while (result.next())
-  {
-    value = result.getValueByName("_value").getDouble();
+  // extract the values
+  JsonArray array = doc.as<JsonArray>();
+  for(JsonVariant v : array) {
+      Serial.println(v["MAC_ADDRESS"].as<String>());
   }
-  // Check if there was an error
-  if (result.getError() != "")
-  {
-#ifdef DEBUG
-    Serial.print("Query result error: ");
-    Serial.println(result.getError());
-#endif
-  }
-  result.close();
-  return value;
-}
-
-bool getFieldResultBool(String field)
-{
-  String bucket = INFLUXDB_BUCKET;
-  // Construct a Flux query
-  String query = "from(bucket: \"" + bucket + "\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
-#ifdef DEBUG
-  // Print composed query
-  Serial.print("Querying with: ");
-  Serial.println(query);
-#endif
-
-  // Send query to the server and get result
-  FluxQueryResult result = client_idb.query(query);
-  bool value = 0;
-  // Iterate over rows. Even there is just one row, next() must be called at least once.
-  while (result.next())
-  {
-    value = result.getValueByName("_value").getBool();
-  }
-  // Check if there was an error
-  if (result.getError() != "")
-  {
-#ifdef DEBUG
-    Serial.print("Query result error: ");
-    Serial.println(result.getError());
-#endif
-  }
-  result.close();
-  return value;
-}
-
-long getFieldResultLong(String field)
-{
-  String bucket = INFLUXDB_BUCKET;
-  // Construct a Flux query
-  String query = "from(bucket: \"" + bucket + "\") |> range(start: -2h) |> filter(fn: (r) => r[\"_field\"] == \"" + field + "\") |> last()";
-
-#ifdef DEBUG
-  // Print composed query
-  Serial.print("Querying with: ");
-  Serial.println(query);
-#endif
-
-  // Send query to the server and get result
-  FluxQueryResult result = client_idb.query(query);
-  long value = 0;
-  // Iterate over rows. Even there is just one row, next() must be called at least once.
-  while (result.next())
-  {
-    value = result.getValueByName("_value").getLong();
-  }
-  // Check if there was an error
-  if (result.getError() != "")
-  {
-#ifdef DEBUG
-    Serial.print("Query result error: ");
-    Serial.println(result.getError());
-#endif
-  }
-  result.close();
-  return value;
 }
