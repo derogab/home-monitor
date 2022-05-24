@@ -5,14 +5,16 @@
 #include <DHT.h>
 // Include WIFi Library
 #include <ESP8266WiFi.h>
-// InfluxDB library
-#include <InfluxDbClient.h>
+// Include JSON Library
+#include <ArduinoJson.h>
+// Include MQTT Library
+#include <MQTT.h>
 
 // Include SECRETs
 #include "secrets.h"
 
 // Init Mode
-//#define DEBUG true
+#define DEBUG true
 
 // Sensors
 // --------------
@@ -21,16 +23,18 @@
 #define LED2 D4
 // Flame Detector
 #define FLAME D1
+#define FLAME_LOG_DELAY 300000
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
 #define DHT_TYPE DHT11 // Sensor type: DHT 11
-#define DHT_DELAY 10000 // Needed delay for DHT sensors
+#define DHT_DELAY 60000 // Needed delay for DHT sensors (Warning! Min = 2000)
 // Photoresistor
 #define PHOTORESISTOR A0              // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900   // turn led on for light values lesser than this
-#define PHOTORESISTOR_LOG_DELAY 1500
+#define PHOTORESISTOR_LOG_DELAY 180000
 // WiFi signal
 #define RSSI_THRESHOLD -60            // WiFi signal strength threshold
+#define RSSI_LOG_DELAY 15000
 
 
 // Init
@@ -41,11 +45,13 @@ unsigned long currentTime;
 unsigned long lastTempTime = 0;
 // Initialize photoresistor log time
 unsigned long lastLightLogTime = 0;
-// Initialize database log time
-unsigned long lastRoomDatabaseLog = 0;
-unsigned long lastWifiDatabaseLog = 0;
+// Initialize flame log time
+unsigned long lastFlameLogTime = 0;
+// Initialize rssi log time
+unsigned long lastRssiLog = 0;
 // Initialize DHT sensor
 DHT dht = DHT(DHT_PIN, DHT_TYPE);
+
 
 // Configs
 // --------------
@@ -58,27 +64,29 @@ IPAddress subnet(SUBNET);
 IPAddress dns(DNS);
 IPAddress gateway(GATEWAY);
 #endif
-WiFiClient client;
-// InfluxDB cfg
-InfluxDBClient client_idb(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-Point pointDevice("device_status");
-Point pointRoom("room_status");
-#define WIFI_DATA_DB_DELAY 10000
-#define ROOM_DATA_DB_DELAY 4000
+// MQTT cfg
+#define MQTT_BUFFER_SIZE 1024               // the maximum size for packets being published and received
+MQTTClient mqttClient(MQTT_BUFFER_SIZE);   // handles the MQTT communication protocol
+WiFiClient networkClient;                  // handles the network connection to the MQTT broker
+#define MQTT_TOPIC_SETUP "setup"   // topic to control the led
+#define MQTT_TOPIC_DATA "data"     // topic to publish the led status
 
-// Init
+// Globals
+// --------------
+// Sensors data values
 bool data_light;
 bool data_flame;
 double data_temperature;
 double data_apparent_temperature;
 double data_humidity;
 
+
 // CODE
 
 void setup() {
   // Sync Serial logs
   Serial.begin(115200);
-
+  
   // Init PINs
   pinMode(LED1, OUTPUT); // Define LED 1 output pin
   pinMode(LED2, OUTPUT); // Define LED 2 output pin
@@ -91,12 +99,19 @@ void setup() {
   // Start DHT
   dht.begin();
 
+  // Start MQTT
+  mqttClient.begin(MQTT_BROKERIP, 1883, networkClient);   // setup communication with MQTT broker
+  mqttClient.onMessage(mqttMessageReceived);              // callback on message received from MQTT broker
+
   // Start WiFi
   WiFi.mode(WIFI_STA);
 
+  #ifdef DEBUG
+    Serial.println("Setup completed!");
+  #endif
+
   // Init delay
   delay(2000);
-
 }
 
 void loop() {
@@ -121,31 +136,25 @@ void loop() {
     digitalWrite(LED2, led_status);
   }
 
-  // DATABASE
+  // MQTT
   // -----------------------------
-  // Check database connection
-  check_influxdb();
-  // Check if previously initialized
-  if (init_db == 0) {
-    // Set TAG for Device Status
-    pointDevice.addTag("device", "ESP8266");
-    pointDevice.addTag("SSID", WiFi.SSID());
-    // Set TAG for Room Status
-    pointRoom.addTag("device", "ESP8266");
-    // Set as initialized    
-    init_db = 1;
+  // Check MQTT connection
+  connectToMQTTBroker();   // Connect to MQTT broker (if not already connected)
+  // Exec MQTT client loop & check
+  if(!mqttClient.loop()){
+    Serial.print(F("MQTT Error: "));  
+    Serial.println(mqttClient.lastError());
   }
   
-  // Write on DB
+  // Send to MQTT
   // Check if frequency is good :)
-  if (currentTime - lastWifiDatabaseLog > WIFI_DATA_DB_DELAY) {
+  if (currentTime - lastRssiLog > RSSI_LOG_DELAY) {
 
     // Update reading time
-    lastWifiDatabaseLog = currentTime;
+    lastRssiLog = currentTime;
 
-    // Write on DB
-    WriteDeviceStatusToDB((int)rssi, led_status);   // write device status on InfluxDB
-    
+    // Send to MQTT
+    //sendNumericDataToMQTT("RSSI", (double)rssi);
   }
   
 
@@ -156,18 +165,28 @@ void loop() {
   lightSensorValue = analogRead(PHOTORESISTOR);   // read analog value (range 0-1023)
 
   if (lightSensorValue >= PHOTORESISTOR_THRESHOLD) {   // high brightness
-    digitalWrite(LED1, HIGH);                          // LED off
+    // Set the LED off
+    digitalWrite(LED1, HIGH);
+    // Update if status is changed
+    if (data_light == false) sendBooleanDataToMQTT("LIGHT", true);
+    // Set status on memory
     data_light = true;
   } else {                                             // low brightness
-    digitalWrite(LED1, LOW);                           // LED on
+    // Set the LED on
+    digitalWrite(LED1, LOW);
+    // Update if status is changed
+    if (data_light == true) sendBooleanDataToMQTT("LIGHT", false);
+    // Set status on memory
     data_light = false;
   }
 
-  // Check if frequency is good :)
+  // Re-send LIGHT data sometimes :)
   if (currentTime - lastLightLogTime > PHOTORESISTOR_LOG_DELAY) {
 
     // Update reading time
     lastLightLogTime = currentTime;
+    // Send data to MQTT
+    sendBooleanDataToMQTT("LIGHT", data_light);
 
     #ifdef DEBUG
       // Logs
@@ -179,18 +198,39 @@ void loop() {
 
   // FLAME DETECTION
   // -----------------------------
-
+  // Read digital PIN of Flame Sensor
   int fire = digitalRead(FLAME); // Read FLAME sensor
-  
-  if(fire == HIGH) {
+  // Check flame level 
+  if(fire == HIGH && !data_flame) {
 
     #ifdef DEBUG
       Serial.println("Fire! Fire!");
     #endif
     
+    // Send flame data
+    sendBooleanDataToMQTT("FLAME", true);
+    // Save flame data
     data_flame = true;
-  } else {
+  
+  } else if (data_flame) { // only if previous is flame!
+
+    #ifdef DEBUG
+      Serial.println("No more fire!");
+    #endif
+
+    // Send no-more-flame data
+    sendBooleanDataToMQTT("FLAME", false);
+    // Save no-more-flame data
     data_flame = false;
+  }
+
+  // Re-send FLAME data sometimes :)
+  if (currentTime - lastFlameLogTime > FLAME_LOG_DELAY) {
+
+    // Update reading time
+    lastFlameLogTime = currentTime;
+    // Send data to MQTT
+    sendBooleanDataToMQTT("FLAME", data_flame);
   }
 
   // TEMPERATURE & HUMIDITY DETECTION
@@ -227,19 +267,13 @@ void loop() {
       Serial.print(hic);
       Serial.println(F("°C"));
     #endif
-    
-  }
 
-
-  // Write on DB
-  // Check if frequency is good :)
-  if (currentTime - lastRoomDatabaseLog > ROOM_DATA_DB_DELAY) {
-
-    // Update reading time
-    lastRoomDatabaseLog = currentTime;
-
-    // Write on DB
-    WriteRoomStatusToDB(data_temperature, data_apparent_temperature, data_humidity, data_light, data_flame);
+    // Send data to MQTT
+    sendNumericDataToMQTT("HUMIDITY", h);
+    delay(500);
+    sendNumericDataToMQTT("TEMPERATURE", t);
+    delay(500);
+    sendNumericDataToMQTT("APPARENT_TEMPERATURE", hic);
     
   }
 
@@ -316,63 +350,81 @@ long connectToWiFi() {
   return rssi_strength;
 }
 
-void check_influxdb() {
-  // Check server connection
-  if (!client_idb.validateConnection()) {
-    Serial.print(F("InfluxDB connection failed: "));
-    Serial.println(client_idb.getLastErrorMessage());
-  }
-  else {
-
-    // Get Server URL
-    String url = client_idb.getServerUrl();
+void connectToMQTTBroker() {
+  if (!mqttClient.connected()) {   // not connected
 
     #ifdef DEBUG
-      Serial.print(F("Connected to InfluxDB: "));
-      Serial.println(url);
+      Serial.print(F("\nConnecting to MQTT broker..."));
     #endif
+    
+    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD)) {
+      Serial.print(F("."));
+      delay(150);
+    }
+    
+    #ifdef DEBUG
+      Serial.println(F("\nConnected!"));
+    #endif
+
+    // connected to broker, subscribe topics
+    //mqttClient.subscribe("example");
+    
+    //#ifdef DEBUG
+    //  Serial.println(F("\nSubscribed to EXAMPLE topic!"));
+    //#endif
   }
 }
 
-void WriteDeviceStatusToDB(int rssi, int led_status) {
-  // Store measured value into point
-  pointDevice.clearFields();
-  // Report RSSI of currently connected network
-  pointDevice.addField("rssi", rssi);
-  pointDevice.addField("led_status", led_status);
-
+void mqttMessageReceived(String &topic, String &payload) {
+  // This function handles a message from the MQTT broker
   #ifdef DEBUG
-    Serial.print(F("Writing: "));
-    Serial.println(pointDevice.toLineProtocol());
-  #endif
+    Serial.println("Incoming MQTT message: " + topic + " - " + payload);
+  #endif 
   
-  // Write on DB
-  if (!client_idb.writePoint(pointDevice)) {
-    Serial.print(F("InfluxDB write failed: "));
-    Serial.println(client_idb.getLastErrorMessage());
-  }
+  if (topic == "example") {
+    // deserialize the JSON object
+    //StaticJsonDocument<128> doc;
+    //deserializeJson(doc, payload);
+    //const char *desiredLedStatus = doc["status"];
 
+    Serial.println(F("Do something here."));
+  }
 }
 
-void WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, bool light, bool flame) {
-  // Store measured value into point
-  pointRoom.clearFields();
-  // Report all room status data on database
-  pointRoom.addField("temperature", temperature);
-  pointRoom.addField("apparent_temperature", apparent_temperature);
-  pointRoom.addField("humidity", humidity);
-  pointRoom.addField("light", light);
-  pointRoom.addField("flame", flame);
+void sendNumericDataToMQTT(String attribute, double value) {
   
+  // Publish new MQTT data (as a JSON object)
+  DynamicJsonDocument doc(1024);
+  doc["mac"] = WiFi.macAddress();
+  doc["type"] = attribute;
+  doc["value"] = value;
+  char buffer[1024];
+  size_t n = serializeJson(doc, buffer);
+
   #ifdef DEBUG
-    Serial.print(F("Writing: "));
-    Serial.println(pointRoom.toLineProtocol());
+    Serial.print(F("JSON message: "));
+    Serial.println(buffer);
   #endif
   
-  // Write on DB
-  if (!client_idb.writePoint(pointRoom)) {
-    Serial.print(F("InfluxDB write failed: "));
-    Serial.println(client_idb.getLastErrorMessage());
-  }
+  mqttClient.publish(MQTT_TOPIC_DATA, buffer, n);
+  
+}
 
+void sendBooleanDataToMQTT(String attribute, bool value) {
+  
+  // Publish new MQTT data (as a JSON object)
+  DynamicJsonDocument doc(1024);
+  doc["mac"] = WiFi.macAddress();
+  doc["type"] = attribute;
+  doc["value"] = value;
+  char buffer[1024];
+  size_t n = serializeJson(doc, buffer);
+
+  #ifdef DEBUG
+    Serial.print(F("JSON message: "));
+    Serial.println(buffer);
+  #endif
+  
+  mqttClient.publish(MQTT_TOPIC_DATA, buffer, n);
+  
 }
