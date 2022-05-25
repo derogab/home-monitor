@@ -13,21 +13,22 @@
 #define DISPLAY_LINES 2   // number of display lines
 #define DISPLAY_ADDR 0x27 // display address on I2C bus
 #define DISPLAY_MODE_N 6
+#define DISPLAY_REFRESH_RATE 5000
 
 #define incPin D3
 #define decPin D4
 #define ALARM_BUTTON D5
-#define DEVICE_BUTTON D6         
+#define DEVICE_BUTTON D6
 #define BUTTON_DEBOUNCE_DELAY 200 // button debounce time in ms
 
 #define BUZZER D8
 
-#define MQTT_BUFFER_SIZE 2048               // the maximum size for packets being published and received
-MQTTClient mqttClient(MQTT_BUFFER_SIZE);   // handles the MQTT communication protocol
-WiFiClient networkClient;                  // handles the network connection to the MQTT broker
-#define MQTT_TOPIC_DEVICES "unishare/devices/all_sensors" 
+#define MQTT_BUFFER_SIZE 2048            // the maximum size for packets being published and received
+MQTTClient mqttClient(MQTT_BUFFER_SIZE); // handles the MQTT communication protocol
+WiFiClient networkClient;                // handles the network connection to the MQTT broker
+#define MQTT_TOPIC_DEVICES "unishare/devices/all_sensors"
 #define MQTT_TOPIC_SENSORS "unishare/sensors/"
-#define MQTT_TOPIC_SETUP "unishare/devices/setup" 
+#define MQTT_TOPIC_SETUP "unishare/devices/setup"
 
 // WiFi cfg
 char ssid[] = SECRET_SSID; // your network SSID (name)
@@ -47,7 +48,9 @@ volatile int device_index = 0;
 volatile unsigned long last_interrupt_inc = 0;
 volatile unsigned long last_interrupt_dec = 0;
 volatile unsigned long last_interrupt_alarm = 0;
-volatile unsigned long last_interrupt_devices_display = 0; 
+volatile unsigned long last_interrupt_devices_display = 0;
+
+unsigned long last_refresh = 0;
 
 volatile bool alarm_active = true;
 volatile bool change_alarm = false;
@@ -117,51 +120,61 @@ void setup()
   lcd.print("Monitor");
 
   // setup MQTT
-  mqttClient.begin(MQTT_BROKERIP, 1883, networkClient);   // setup communication with MQTT broker
-  mqttClient.onMessage(mqttMessageReceived);              // callback on message received from MQTT broker
+  mqttClient.begin(MQTT_BROKERIP, 1883, networkClient); // setup communication with MQTT broker
+  mqttClient.onMessage(mqttMessageReceived);            // callback on message received from MQTT broker
 }
 
 bool sent_setup = false;
 void loop()
-{ 
-  if (!sent_setup){
-    connectToWiFi();   // connect to WiFi (if not already connected)
-    connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
+{
+  if (!sent_setup)
+  {
+    connectToWiFi();       // connect to WiFi (if not already connected)
+    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
     DynamicJsonDocument doc(256);
     String to_replace = String(':');
     String replaced = "";
     String mac_address = String(WiFi.macAddress());
     mac_address.replace(to_replace, replaced);
     doc["mac_address"] = mac_address;
-    doc["type"] = "sensors";
+    doc["type"] = "screen";
     doc["name"] = "schermo1";
     char buffer[256];
     size_t n = serializeJson(doc, buffer);
 
-    #ifdef DEBUG
-      Serial.print(F("JSON setup message: "));
-      Serial.println(buffer);
-    #endif
-  
-    if(mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
-      sent_setup = true;
-  } else {
-    connectToWiFi();   // connect to WiFi (if not already connected)
-    connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
+#ifdef DEBUG
+    Serial.print(F("JSON setup message: "));
+    Serial.println(buffer);
+#endif
 
-    if(!mqttClient.loop()){
-      #ifdef DEBUG
-        Serial.println(mqttClient.lastError());
-      #endif
+    if (mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
+      sent_setup = true;
+  }
+  else
+  {
+    connectToWiFi();       // connect to WiFi (if not already connected)
+    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
+
+    if (!mqttClient.loop())
+    {
+#ifdef DEBUG
+      Serial.println(mqttClient.lastError());
+#endif
       mqttClient.disconnect();
     }
-    
+
     if (alarm_active && flame)
       digitalWrite(BUZZER, HIGH);
     else
       digitalWrite(BUZZER, LOW);
+
+    unsigned long now = millis();
+    if (now - last_refresh > DISPLAY_REFRESH_RATE)
+    {
+      printDisplayInfo();
+      last_refresh = now;
+    }
   }
-      
 }
 
 // Helpers
@@ -225,7 +238,8 @@ void IRAM_ATTR alarmInterrupt()
 
 void IRAM_ATTR deviceDisplayInterrupt()
 {
-  if (number_of_devices == 0){
+  if (number_of_devices == 0)
+  {
     lcd.home();
     lcd.clear();
     lcd.printf("No devices");
@@ -233,7 +247,7 @@ void IRAM_ATTR deviceDisplayInterrupt()
   }
   unsigned long now = millis();
   if (now - last_interrupt_devices_display > BUTTON_DEBOUNCE_DELAY)
-  { 
+  {
     last_interrupt_devices_display = now;
     device_index++;
     device_index = device_index % number_of_devices;
@@ -245,6 +259,11 @@ void IRAM_ATTR deviceDisplayInterrupt()
     char buffer[mac_string.length() + 1];
     mac_string.toCharArray(buffer, mac_string.length() + 1);
     lcd.printf("%s", buffer);
+    #ifdef DEBUG
+    Serial.print(F("Device to display: "));
+    Serial.println(mac_string);
+#endif
+
   }
 }
 
@@ -320,37 +339,41 @@ void connectToWiFi()
   }
 }
 
-void connectToMQTTBroker() {
-  if (!mqttClient.connected()) {   // not connected
-    #ifdef DEBUG
-      Serial.print(F("\nConnecting to MQTT broker..."));
-    #endif
-    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD)) {
-      #ifdef DEBUG
-        Serial.print(F("."));
-      #endif
+void connectToMQTTBroker()
+{
+  if (!mqttClient.connected())
+  { // not connected
+#ifdef DEBUG
+    Serial.print(F("\nConnecting to MQTT broker..."));
+#endif
+    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD))
+    {
+#ifdef DEBUG
+      Serial.print(F("."));
+#endif
       delay(200);
     }
-    #ifdef DEBUG
-      Serial.println(F("\nConnected!"));
-    #endif
+#ifdef DEBUG
+    Serial.println(F("\nConnected!"));
+#endif
 
     // connected to broker, subscribe topics
     mqttClient.subscribe(MQTT_TOPIC_DEVICES);
     String topic_sensors = String(MQTT_TOPIC_SENSORS) + "#";
     mqttClient.subscribe(topic_sensors);
-    #ifdef DEBUG
-      Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_DEVICES);
-      Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_SENSORS);
-    #endif
+#ifdef DEBUG
+    Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_DEVICES);
+    Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_SENSORS);
+#endif
   }
 }
 
-void mqttMessageReceived(String &topic, String &payload) {
-  // this function handles a message from the MQTT broker
-  #ifdef DEBUG
-    Serial.println("Incoming MQTT message: " + topic + " - " + payload);
-  #endif
+void mqttMessageReceived(String &topic, String &payload)
+{
+// this function handles a message from the MQTT broker
+#ifdef DEBUG
+  Serial.println("Incoming MQTT message: " + topic + " - " + payload);
+#endif
 
   if (topic == MQTT_TOPIC_DEVICES)
   {
@@ -360,16 +383,20 @@ void mqttMessageReceived(String &topic, String &payload) {
     JsonArray array = devices_doc.as<JsonArray>();
     number_of_devices = 0;
     bool device_found;
-    for(JsonVariant v : array) {
+    for (JsonVariant v : array)
+    {
       String mac_to_find = v["MAC_ADDRESS"].as<String>();
       device_found = false;
-      for (int i = 0; i < 10; i++) {
-        if (all_sensors[i].mac == mac_to_find){
+      for (int i = 0; i < 10; i++)
+      {
+        if (all_sensors[i].mac == mac_to_find)
+        {
           device_found = true;
-            break;
-        }  
+          break;
+        }
       }
-      if(!device_found){
+      if (!device_found)
+      {
         all_sensors[number_of_devices].mac = mac_to_find;
       }
       number_of_devices++;
@@ -377,55 +404,68 @@ void mqttMessageReceived(String &topic, String &payload) {
     return;
   }
 
-  if (topic.startsWith(MQTT_TOPIC_SENSORS)){
+  if (topic.startsWith(MQTT_TOPIC_SENSORS))
+  {
     int s_index = topic.lastIndexOf('/');
     int length = topic.length();
-    String data_type = topic.substring(s_index+1, length);
+    String data_type = topic.substring(s_index + 1, length);
     String sub_s = topic.substring(0, s_index);
     s_index = sub_s.lastIndexOf('/');
     length = sub_s.length();
-    String mac_to_find = sub_s.substring(s_index+1, length);
+    String mac_to_find = sub_s.substring(s_index + 1, length);
 
-    #ifdef DEBUG
-      Serial.println("Data type: " + data_type);
-      Serial.println("MAC: " + mac_to_find);
-    #endif
+#ifdef DEBUG
+    Serial.println("Data type: " + data_type);
+    Serial.println("MAC: " + mac_to_find);
+#endif
 
     StaticJsonDocument<32> sensor_doc;
     deserializeJson(sensor_doc, payload);
     int index = 0;
-    for (int i = 0; i < 10; i++) {
-        if (all_sensors[i].mac == mac_to_find){
-            break;
-            index = i;
-        }  
+    for (int i = 0; i < 10; i++)
+    {
+      if (all_sensors[i].mac == mac_to_find)
+      { 
+        index = i;
+        break;
       }
-    if (data_type == "humidity"){
+    }
+
+    if (data_type == "humidity")
+    {
       all_sensors[index].humidity = sensor_doc["value"].as<double>();
       return;
     }
-    if (data_type == "temperature"){
+    if (data_type == "temperature")
+    {
       all_sensors[index].temperature = sensor_doc["value"].as<double>();
       return;
     }
-    if (data_type == "apparent_temperature"){
+    if (data_type == "apparent_temperature")
+    {
       all_sensors[index].apparent_temperature = sensor_doc["value"].as<double>();
       return;
     }
-    if (data_type == "flame"){
+    if (data_type == "flame")
+    {
       all_sensors[index].flame = sensor_doc["value"].as<bool>();
-      if (sensor_doc["value"].as<bool>()){
+      if (sensor_doc["value"].as<bool>())
+      {
         flame = true;
-      } else {
+      }
+      else
+      {
         flame = false;
       }
       return;
     }
-    if (data_type == "light"){
+    if (data_type == "light")
+    {
       all_sensors[index].light = sensor_doc["value"].as<bool>();
       return;
     }
-    if (data_type == "rssi"){
+    if (data_type == "rssi")
+    {
       all_sensors[index].rssi = sensor_doc["value"].as<long>();
       return;
     }
