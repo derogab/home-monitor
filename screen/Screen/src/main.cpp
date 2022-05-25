@@ -7,6 +7,7 @@
 
 #include <ESP8266WiFi.h>
 #include "secrets.h"
+#include "sensors_t.h"
 
 #define DISPLAY_CHARS 16  // number of characters on a line
 #define DISPLAY_LINES 2   // number of display lines
@@ -15,15 +16,17 @@
 
 #define incPin D3
 #define decPin D4
-#define ALARM_BUTTON D5           
+#define ALARM_BUTTON D5
+#define DEVICE_BUTTON D6         
 #define BUTTON_DEBOUNCE_DELAY 200 // button debounce time in ms
 
 #define BUZZER D8
 
-#define MQTT_BUFFER_SIZE 1024               // the maximum size for packets being published and received
+#define MQTT_BUFFER_SIZE 2048               // the maximum size for packets being published and received
 MQTTClient mqttClient(MQTT_BUFFER_SIZE);   // handles the MQTT communication protocol
 WiFiClient networkClient;                  // handles the network connection to the MQTT broker
 #define MQTT_TOPIC_DEVICES "unishare/devices/all_devices" 
+#define MQTT_TOPIC_SENSORS "unishare/sensors"
 
 // WiFi cfg
 char ssid[] = SECRET_SSID; // your network SSID (name)
@@ -38,18 +41,25 @@ IPAddress gateway(GATEWAY);
 LiquidCrystal_I2C lcd(DISPLAY_ADDR, DISPLAY_CHARS, DISPLAY_LINES); // display object
 
 volatile byte displayMode = 0;
+volatile int number_of_devices = 0;
+volatile int number_of_infos = 0;
+volatile int device_index = 0;
 
-unsigned long last_interrupt_inc = 0;
-unsigned long last_interrupt_dec = 0;
-unsigned long last_interrupt_alarm = 0;
-unsigned long last_connect_time = 0;
+volatile unsigned long last_interrupt_inc = 0;
+volatile unsigned long last_interrupt_dec = 0;
+volatile unsigned long last_interrupt_alarm = 0;
+volatile unsigned long last_interrupt_devices_display = 0; 
+volatile unsigned long last_connect_time = 0;
 unsigned long connect_delay = 5000;
 
 volatile bool alarm_active = true;
 volatile bool change_alarm = false;
 
+sensors_t all_sensors[10];
+
 void connectToWiFi();
-void IRAM_ATTR buttonInterrupt();
+void IRAM_ATTR alarmInterrupt();
+void IRAM_ATTR deviceDisplayInterrupt();
 void IRAM_ATTR isrInc();
 void IRAM_ATTR isrDec();
 void printDisplayInfo();
@@ -65,14 +75,15 @@ void setup()
   Wire.beginTransmission(DISPLAY_ADDR);
   byte error = Wire.endTransmission();
 
-  // // set BUTTON pin as input with pull-up
-  // pinMode(ALARM_BUTTON, INPUT_PULLUP);
-  // attachInterrupt(digitalPinToInterrupt(ALARM_BUTTON), buttonInterrupt, FALLING);
-
-  // pinMode(incPin, INPUT_PULLUP);
-  // pinMode(decPin, INPUT_PULLUP);
-  // attachInterrupt(digitalPinToInterrupt(incPin), isrInc, FALLING);
-  // attachInterrupt(digitalPinToInterrupt(decPin), isrDec, FALLING);
+  // set BUTTON pin as input with pull-up
+  pinMode(ALARM_BUTTON, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(ALARM_BUTTON), alarmInterrupt, FALLING);
+  pinMode(DEVICE_BUTTON, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(DEVICE_BUTTON), deviceDisplayInterrupt, FALLING);
+  pinMode(incPin, INPUT_PULLUP);
+  pinMode(decPin, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(incPin), isrInc, FALLING);
+  attachInterrupt(digitalPinToInterrupt(decPin), isrDec, FALLING);
 
   pinMode(BUZZER, OUTPUT);
   digitalWrite(BUZZER, LOW);
@@ -124,34 +135,21 @@ void loop()
 
   connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
 
-  if(!mqttClient.loop())
-    Serial.println(mqttClient.lastError());
-
-  delay(10);
-
-  // unsigned long timeNow = millis();
-  // if (timeNow - last_connect_time > connect_delay)
-  // {
-  //   last_connect_time = timeNow;
-  //   connectToWiFi(); // WiFi connect if not established and if connected get wifi signal strength
-  //   connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
-  // }
-
-  // if (alarm_active && flame)
-  //   digitalWrite(BUZZER, HIGH);
-  // else
-  //   digitalWrite(BUZZER, LOW);
-  
-  // mqttClient.loop();       // MQTT client loop
+  if(!mqttClient.loop()){
+    #ifdef DEBUG
+      Serial.println(mqttClient.lastError());
+    #endif
+    mqttClient.disconnect();
+  }
     
-// #ifdef DEBUG
-//     Serial.printf("humidity: %2.2f \n", humidity);
-//     Serial.printf("temperature: %2.2f \n", temperature);
-//     Serial.printf("apparent_temperature: %2.2f \n", apparent_temperature);
-//     Serial.printf("light: %s \n", light ? "true" : "false");
-//     Serial.printf("flame: %s \n", flame ? "true" : "false");
-//     Serial.printf("rssi: %ld \n", rssi);
-// #endif
+
+  //delay(10);
+
+  if (alarm_active && flame)
+    digitalWrite(BUZZER, HIGH);
+  else
+    digitalWrite(BUZZER, LOW);
+      
 }
 
 // Helpers
@@ -165,7 +163,7 @@ void isrInc()
     displayMode = displayMode % DISPLAY_MODE_N;
 
 #ifdef DEBUG
-    Serial.printf("DisplayMode: %d", displayMode);
+    Serial.printf("DisplayMode: %d \n", displayMode);
 #endif
 
     last_interrupt_inc = now;
@@ -184,7 +182,7 @@ void isrDec()
       displayMode--;
 
 #ifdef DEBUG
-    Serial.printf("DisplayMode: %d", displayMode);
+    Serial.printf("DisplayMode: %d \n", displayMode);
 #endif
 
     last_interrupt_dec = now;
@@ -192,7 +190,7 @@ void isrDec()
   }
 }
 
-void IRAM_ATTR buttonInterrupt()
+void IRAM_ATTR alarmInterrupt()
 {
   unsigned long now = millis();
   if (now - last_interrupt_alarm > BUTTON_DEBOUNCE_DELAY)
@@ -214,6 +212,31 @@ void IRAM_ATTR buttonInterrupt()
   }
 }
 
+void IRAM_ATTR deviceDisplayInterrupt()
+{
+  if (number_of_devices == 0){
+    lcd.home();
+    lcd.clear();
+    lcd.printf("No devices");
+    return;
+  }
+  unsigned long now = millis();
+  if (now - last_interrupt_devices_display > BUTTON_DEBOUNCE_DELAY)
+  { 
+    last_interrupt_devices_display = now;
+    device_index++;
+    device_index = device_index % number_of_devices;
+    lcd.home();
+    lcd.clear();
+    lcd.printf("Device:");
+    lcd.setCursor(0, 1);
+    String mac_string = all_sensors[device_index].mac;
+    char buffer[mac_string.length() + 1];
+    mac_string.toCharArray(buffer, mac_string.length() + 1);
+    lcd.printf("%s", buffer);
+  }
+}
+
 void printDisplayInfo()
 {
   lcd.home();
@@ -223,37 +246,37 @@ void printDisplayInfo()
   {
     lcd.printf("Humidity:");
     lcd.setCursor(0, 1);
-    lcd.printf("%2.2f %%", humidity);
+    lcd.printf("%2.2f %%", all_sensors[device_index].humidity);
   }
   else if (displayMode == 1)
   {
     lcd.printf("Temp:");
     lcd.setCursor(0, 1);
-    lcd.printf("%2.2f C", temperature);
+    lcd.printf("%2.2f C", all_sensors[device_index].temperature);
   }
   else if (displayMode == 2)
   {
     lcd.printf("Apparent temp:");
     lcd.setCursor(0, 1);
-    lcd.printf("%2.2f C", apparent_temperature);
+    lcd.printf("%2.2f C", all_sensors[device_index].apparent_temperature);
   }
   else if (displayMode == 3)
   {
     lcd.printf("Light:");
     lcd.setCursor(0, 1);
-    lcd.printf("%s", light ? "ON" : "OFF");
+    lcd.printf("%s", all_sensors[device_index].light ? "ON" : "OFF");
   }
   else if (displayMode == 4)
   {
     lcd.printf("Fire:");
     lcd.setCursor(0, 1);
-    lcd.printf("%s", flame ? "YES" : "NO");
+    lcd.printf("%s", all_sensors[device_index].flame ? "YES" : "NO");
   }
   else if (displayMode == 5)
   {
     lcd.printf("WiFi Signal:");
     lcd.setCursor(0, 1);
-    lcd.printf("%ld dB", rssi);
+    lcd.printf("%ld dB", all_sensors[device_index].rssi);
   }
 }
 
@@ -288,29 +311,101 @@ void connectToWiFi()
 
 void connectToMQTTBroker() {
   if (!mqttClient.connected()) {   // not connected
-    Serial.print(F("\nConnecting to MQTT broker..."));
+    #ifdef DEBUG
+      Serial.print(F("\nConnecting to MQTT broker..."));
+    #endif
     while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD)) {
-      Serial.print(F("."));
-      delay(1000);
+      #ifdef DEBUG
+        Serial.print(F("."));
+      #endif
+      delay(200);
     }
-    Serial.println(F("\nConnected!"));
+    #ifdef DEBUG
+      Serial.println(F("\nConnected!"));
+    #endif
 
     // connected to broker, subscribe topics
     mqttClient.subscribe(MQTT_TOPIC_DEVICES);
-    Serial.println(F("\nSubscribed to devices topic!"));
+    mqttClient.subscribe(MQTT_TOPIC_SENSORS);
+    #ifdef DEBUG
+      Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_DEVICES);
+      Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_SENSORS);
+    #endif
   }
 }
 
 void mqttMessageReceived(String &topic, String &payload) {
   // this function handles a message from the MQTT broker
-  Serial.println("Incoming MQTT message: " + topic + " - " + payload);
+  #ifdef DEBUG
+    Serial.println("Incoming MQTT message: " + topic + " - " + payload);
+  #endif
 
-  StaticJsonDocument<1024> doc;
-  deserializeJson(doc, payload);
-
-  // extract the values
-  JsonArray array = doc.as<JsonArray>();
-  for(JsonVariant v : array) {
-      Serial.println(v["MAC_ADDRESS"].as<String>());
+  if (topic == MQTT_TOPIC_DEVICES)
+  {
+    StaticJsonDocument<1024> devices_doc;
+    deserializeJson(devices_doc, payload);
+    // extract the values
+    JsonArray array = devices_doc.as<JsonArray>();
+    number_of_devices = 0;
+    bool device_found;
+    for(JsonVariant v : array) {
+      String mac_to_find = v["MAC_ADDRESS"].as<String>();
+      device_found = false;
+      for (int i = 0; i < 10; i++) {
+        if (all_sensors[i].mac == mac_to_find){
+          device_found = true;
+            break;
+        }  
+      }
+      if(!device_found){
+        all_sensors[number_of_devices].mac = mac_to_find;
+      }
+      number_of_devices++;
+    }
+    return;
   }
+
+  if (topic == MQTT_TOPIC_SENSORS){
+    StaticJsonDocument<1024> sensor_doc;
+    deserializeJson(sensor_doc, payload);
+    String mac_to_find =  sensor_doc["mac_address"].as<String>();
+    int index = 0;
+    for (int i = 0; i < 10; i++) {
+        if (all_sensors[i].mac == mac_to_find){
+            break;
+            index = i;
+        }  
+      }
+    String data_type =  sensor_doc["type"].as<String>();
+    if (data_type == "humidity"){
+      all_sensors[index].humidity = sensor_doc["value"].as<double>();
+      return;
+    }
+    if (data_type == "temperature"){
+      all_sensors[index].temperature = sensor_doc["value"].as<double>();
+      return;
+    }
+    if (data_type == "apparent_temperature"){
+      all_sensors[index].apparent_temperature = sensor_doc["value"].as<double>();
+      return;
+    }
+    if (data_type == "flame"){
+      all_sensors[index].flame = sensor_doc["value"].as<bool>();
+      if (sensor_doc["value"].as<bool>()){
+        flame = true;
+      } else {
+        flame = false;
+      }
+      return;
+    }
+    if (data_type == "light"){
+      all_sensors[index].light = sensor_doc["value"].as<bool>();
+      return;
+    }
+    if (data_type == "rssi"){
+      all_sensors[index].rssi = sensor_doc["value"].as<long>();
+      return;
+    }
+  }
+  return;
 }
