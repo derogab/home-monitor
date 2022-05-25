@@ -37,7 +37,7 @@
 #define RSSI_LOG_DELAY 15000
 
 
-#define SETUP_LOG_DELAY 60000
+#define SETUP_LOG_DELAY 10000
 
 
 // Init
@@ -168,7 +168,7 @@ void loop() {
     lastRssiLog = currentTime;
 
     // Send to MQTT
-    //sendNumericDataToMQTT("RSSI", (double)rssi);
+    sendNumericDataToMQTT("rssi", (double)rssi);
   }
   
 
@@ -182,14 +182,14 @@ void loop() {
     // Set the LED off
     digitalWrite(LED1, HIGH);
     // Update if status is changed
-    if (data_light == false) sendBooleanDataToMQTT("LIGHT", true);
+    if (data_light == false) sendBooleanDataToMQTT("light", true);
     // Set status on memory
     data_light = true;
   } else {                                             // low brightness
     // Set the LED on
     digitalWrite(LED1, LOW);
     // Update if status is changed
-    if (data_light == true) sendBooleanDataToMQTT("LIGHT", false);
+    if (data_light == true) sendBooleanDataToMQTT("light", false);
     // Set status on memory
     data_light = false;
   }
@@ -200,7 +200,7 @@ void loop() {
     // Update reading time
     lastLightLogTime = currentTime;
     // Send data to MQTT
-    sendBooleanDataToMQTT("LIGHT", data_light);
+    sendBooleanDataToMQTT("light", data_light);
 
     #ifdef DEBUG
       // Logs
@@ -222,7 +222,7 @@ void loop() {
     #endif
     
     // Send flame data
-    sendBooleanDataToMQTT("FLAME", true);
+    sendBooleanDataToMQTT("flame", true);
     // Save flame data
     data_flame = true;
   
@@ -233,7 +233,7 @@ void loop() {
     #endif
 
     // Send no-more-flame data
-    sendBooleanDataToMQTT("FLAME", false);
+    sendBooleanDataToMQTT("flame", false);
     // Save no-more-flame data
     data_flame = false;
   }
@@ -244,7 +244,7 @@ void loop() {
     // Update reading time
     lastFlameLogTime = currentTime;
     // Send data to MQTT
-    sendBooleanDataToMQTT("FLAME", data_flame);
+    sendBooleanDataToMQTT("flame", data_flame);
   }
 
   // TEMPERATURE & HUMIDITY DETECTION
@@ -283,11 +283,11 @@ void loop() {
     #endif
 
     // Send data to MQTT
-    sendNumericDataToMQTT("HUMIDITY", h);
-    delay(500);
-    sendNumericDataToMQTT("TEMPERATURE", t);
-    delay(500);
-    sendNumericDataToMQTT("APPARENT_TEMPERATURE", hic);
+    sendNumericDataToMQTT("humidity", h);
+    //delay(500);
+    sendNumericDataToMQTT("temperature", t);
+    //delay(500);
+    sendNumericDataToMQTT("apparent_temperature", hic);
     
   }
 
@@ -408,9 +408,10 @@ void mqttMessageReceived(String &topic, String &payload) {
 void sendNumericDataToMQTT(String attribute, double value) {
   
   // Publish new MQTT data (as a JSON object)
-  DynamicJsonDocument doc(1024);
+  const int capacity = JSON_OBJECT_SIZE(1);
+  StaticJsonDocument<capacity> doc;
   doc["value"] = value;
-  char buffer[1024];
+  char buffer[128];
   size_t n = serializeJson(doc, buffer);
 
   #ifdef DEBUG
@@ -454,9 +455,9 @@ void sendSetup(String device_name) {
   
   // Publish new MQTT data (as a JSON object)
   DynamicJsonDocument doc(1024);
-  doc["mac_addr"] = clearMacAddress(String(WiFi.macAddress()));
-  doc["name"] = "sensors";
-  doc["type"] = device_name;
+  doc["mac_address"] = clearMacAddress(String(WiFi.macAddress()));
+  doc["name"] = device_name;
+  doc["type"] = "sensors";
   char buffer[1024];
   size_t n = serializeJson(doc, buffer);
 
