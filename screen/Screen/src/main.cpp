@@ -26,7 +26,7 @@
 MQTTClient mqttClient(MQTT_BUFFER_SIZE);   // handles the MQTT communication protocol
 WiFiClient networkClient;                  // handles the network connection to the MQTT broker
 #define MQTT_TOPIC_DEVICES "unishare/devices/all_devices" 
-#define MQTT_TOPIC_SENSORS "unishare/sensors"
+#define MQTT_TOPIC_SENSORS "unishare/sensors/"
 
 // WiFi cfg
 char ssid[] = SECRET_SSID; // your network SSID (name)
@@ -41,21 +41,19 @@ IPAddress gateway(GATEWAY);
 LiquidCrystal_I2C lcd(DISPLAY_ADDR, DISPLAY_CHARS, DISPLAY_LINES); // display object
 
 volatile byte displayMode = 0;
-volatile int number_of_devices = 0;
-volatile int number_of_infos = 0;
 volatile int device_index = 0;
 
 volatile unsigned long last_interrupt_inc = 0;
 volatile unsigned long last_interrupt_dec = 0;
 volatile unsigned long last_interrupt_alarm = 0;
 volatile unsigned long last_interrupt_devices_display = 0; 
-volatile unsigned long last_connect_time = 0;
-unsigned long connect_delay = 5000;
 
 volatile bool alarm_active = true;
 volatile bool change_alarm = false;
+bool flame;
 
 sensors_t all_sensors[10];
+int number_of_devices = 0;
 
 void connectToWiFi();
 void IRAM_ATTR alarmInterrupt();
@@ -122,17 +120,11 @@ void setup()
   mqttClient.onMessage(mqttMessageReceived);              // callback on message received from MQTT broker
 }
 
-double humidity;
-double temperature;
-double apparent_temperature;
-bool light;
-bool flame;
-long rssi;
+
 
 void loop()
 { 
   connectToWiFi();   // connect to WiFi (if not already connected)
-
   connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
 
   if(!mqttClient.loop()){
@@ -142,9 +134,6 @@ void loop()
     mqttClient.disconnect();
   }
     
-
-  //delay(10);
-
   if (alarm_active && flame)
     digitalWrite(BUZZER, HIGH);
   else
@@ -326,7 +315,8 @@ void connectToMQTTBroker() {
 
     // connected to broker, subscribe topics
     mqttClient.subscribe(MQTT_TOPIC_DEVICES);
-    mqttClient.subscribe(MQTT_TOPIC_SENSORS);
+    String topic_sensors = String(MQTT_TOPIC_SENSORS) + "#";
+    mqttClient.subscribe(topic_sensors);
     #ifdef DEBUG
       Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_DEVICES);
       Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_SENSORS);
@@ -342,7 +332,7 @@ void mqttMessageReceived(String &topic, String &payload) {
 
   if (topic == MQTT_TOPIC_DEVICES)
   {
-    StaticJsonDocument<1024> devices_doc;
+    StaticJsonDocument<2048> devices_doc;
     deserializeJson(devices_doc, payload);
     // extract the values
     JsonArray array = devices_doc.as<JsonArray>();
@@ -365,10 +355,22 @@ void mqttMessageReceived(String &topic, String &payload) {
     return;
   }
 
-  if (topic == MQTT_TOPIC_SENSORS){
-    StaticJsonDocument<1024> sensor_doc;
+  if (topic.startsWith(MQTT_TOPIC_SENSORS)){
+    int s_index = topic.lastIndexOf('/');
+    int length = topic.length();
+    String data_type = topic.substring(s_index+1, length);
+    String sub_s = topic.substring(0, s_index);
+    s_index = sub_s.lastIndexOf('/');
+    length = sub_s.length();
+    String mac_to_find = sub_s.substring(s_index+1, length);
+
+    #ifdef DEBUG
+      Serial.println("Data type: " + data_type);
+      Serial.println("MAC: " + mac_to_find);
+    #endif
+
+    StaticJsonDocument<32> sensor_doc;
     deserializeJson(sensor_doc, payload);
-    String mac_to_find =  sensor_doc["mac_address"].as<String>();
     int index = 0;
     for (int i = 0; i < 10; i++) {
         if (all_sensors[i].mac == mac_to_find){
@@ -376,7 +378,6 @@ void mqttMessageReceived(String &topic, String &payload) {
             index = i;
         }  
       }
-    String data_type =  sensor_doc["type"].as<String>();
     if (data_type == "humidity"){
       all_sensors[index].humidity = sensor_doc["value"].as<double>();
       return;
