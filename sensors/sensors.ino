@@ -23,7 +23,8 @@
 #define LED2 D4
 // Flame Detector
 #define FLAME D1
-#define FLAME_LOG_DELAY 300000
+#define FLAME_LOG_DELAY 30000
+#define FLAME_CHANGE_DELAY 2500
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
 #define DHT_TYPE DHT11 // Sensor type: DHT 11
@@ -31,13 +32,14 @@
 // Photoresistor
 #define PHOTORESISTOR A0              // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900   // turn led on for light values lesser than this
-#define PHOTORESISTOR_LOG_DELAY 180000
+#define PHOTORESISTOR_LOG_DELAY 5000
+#define PHOTORESISTOR_CHANGE_DELAY 5000
 // WiFi signal
 #define RSSI_THRESHOLD -60            // WiFi signal strength threshold
-#define RSSI_LOG_DELAY 15000
+#define RSSI_LOG_DELAY 2500
 
 
-#define SETUP_LOG_DELAY 10000
+#define SETUP_LOG_DELAY 60000
 
 
 // Init
@@ -50,8 +52,10 @@ unsigned long lastSetupTime = 0;
 unsigned long lastTempTime = 0;
 // Initialize photoresistor log time
 unsigned long lastLightLogTime = 0;
+unsigned long lastLightChangeTime = 0;
 // Initialize flame log time
 unsigned long lastFlameLogTime = 0;
+unsigned long lastFlameChangeTime = 0;
 // Initialize rssi log time
 unsigned long lastRssiLog = 0;
 // Initialize DHT sensor
@@ -89,6 +93,7 @@ double data_humidity;
 void setup() {
   // Sync Serial logs
   Serial.begin(115200);
+  Serial.println("Setup...");
   
   // Init PINs
   pinMode(LED1, OUTPUT); // Define LED 1 output pin
@@ -108,6 +113,7 @@ void setup() {
 
   // Start WiFi
   WiFi.mode(WIFI_STA);
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
 
   #ifdef DEBUG
     Serial.println("Setup completed!");
@@ -181,17 +187,17 @@ void loop() {
   if (lightSensorValue >= PHOTORESISTOR_THRESHOLD) {   // high brightness
     // Set the LED off
     digitalWrite(LED1, HIGH);
-    // Update if status is changed
-    if (data_light == false) sendBooleanDataToMQTT("light", true);
     // Set status on memory
     data_light = true;
+    // Update reading time
+    lastLightChangeTime = currentTime;
   } else {                                             // low brightness
     // Set the LED on
     digitalWrite(LED1, LOW);
-    // Update if status is changed
-    if (data_light == true) sendBooleanDataToMQTT("light", false);
     // Set status on memory
     data_light = false;
+    // Update reading time
+    lastLightChangeTime = currentTime;
   }
 
   // Re-send LIGHT data sometimes :)
@@ -214,28 +220,37 @@ void loop() {
   // -----------------------------
   // Read digital PIN of Flame Sensor
   int fire = digitalRead(FLAME); // Read FLAME sensor
-  // Check flame level 
-  if(fire == HIGH && !data_flame) {
+  // Sent fast data only each some seconds
+  if(currentTime - lastFlameChangeTime > FLAME_CHANGE_DELAY) {
 
-    #ifdef DEBUG
-      Serial.println("Fire! Fire!");
-    #endif
-    
-    // Send flame data
-    sendBooleanDataToMQTT("flame", true);
-    // Save flame data
-    data_flame = true;
+    // Check flame level 
+    if(fire == HIGH && !data_flame) {
   
-  } else if (data_flame) { // only if previous is flame!
-
-    #ifdef DEBUG
-      Serial.println("No more fire!");
-    #endif
-
-    // Send no-more-flame data
-    sendBooleanDataToMQTT("flame", false);
-    // Save no-more-flame data
-    data_flame = false;
+      #ifdef DEBUG
+        Serial.println("Fire! Fire!");
+      #endif
+      
+      // Send flame data
+      sendBooleanDataToMQTT("flame", true);
+      // Save flame data
+      data_flame = true;
+      // Update reading time
+      lastFlameChangeTime = currentTime;
+    
+    } else if (data_flame) { // only if previous is flame!
+  
+      #ifdef DEBUG
+        Serial.println("No more fire!");
+      #endif
+  
+      // Send no-more-flame data
+      sendBooleanDataToMQTT("flame", false);
+      // Save no-more-flame data
+      data_flame = false;
+      // Update reading time
+      lastFlameChangeTime = currentTime;
+    }
+    
   }
 
   // Re-send FLAME data sometimes :)
@@ -381,11 +396,11 @@ void connectToMQTTBroker() {
     #endif
 
     // connected to broker, subscribe topics
-    //mqttClient.subscribe("example");
+    mqttClient.subscribe("example");
     
-    //#ifdef DEBUG
-    //  Serial.println(F("\nSubscribed to EXAMPLE topic!"));
-    //#endif
+    #ifdef DEBUG
+      Serial.println(F("\nSubscribed to EXAMPLE topic!"));
+    #endif
   }
 }
 
@@ -414,17 +429,24 @@ void sendNumericDataToMQTT(String attribute, double value) {
   char buffer[128];
   size_t n = serializeJson(doc, buffer);
 
-  #ifdef DEBUG
-    Serial.print(F("JSON message: "));
-    Serial.println(buffer);
-  #endif
-
   String topic = "unishare/sensors/"+clearMacAddress(String(WiFi.macAddress()))+"/"+attribute;
+
+  #ifdef DEBUG
+    Serial.print(F("JSON to "));
+    Serial.print(topic);
+    Serial.print(F(":"));
+    Serial.print(buffer);
+  #endif
+  
   int topic_len = topic.length() + 1; 
   char topic_c[topic_len];
   topic.toCharArray(topic_c, topic_len);
   
-  mqttClient.publish(topic_c, buffer, n);
+  bool result = mqttClient.publish(topic_c, buffer, n);
+
+  #ifdef DEBUG
+    if (bool) Serial.println(F(" ....OK!")); else Serial.println(F(" ....FAIL!"));
+  #endif
   
 }
 
@@ -437,18 +459,24 @@ void sendBooleanDataToMQTT(String attribute, bool value) {
   char buffer[128];
   size_t n = serializeJson(doc, buffer);
 
-  #ifdef DEBUG
-    Serial.print(F("JSON message: "));
-    Serial.println(buffer);
-  #endif
-
   String topic = "unishare/sensors/"+clearMacAddress(String(WiFi.macAddress()))+"/"+attribute;
+
+  #ifdef DEBUG
+    Serial.print(F("JSON to "));
+    Serial.print(topic);
+    Serial.print(F(" : "));
+    Serial.print(buffer);
+  #endif
+  
   int topic_len = topic.length() + 1; 
   char topic_c[topic_len];
   topic.toCharArray(topic_c, topic_len);
   
   mqttClient.publish(topic_c, buffer, n);
-  
+
+  #ifdef DEBUG
+    Serial.println(F(" ....OK!"));
+  #endif
 }
 
 void sendSetup(String device_name) {
@@ -462,11 +490,17 @@ void sendSetup(String device_name) {
   size_t n = serializeJson(doc, buffer);
 
   #ifdef DEBUG
-    Serial.print(F("JSON message: "));
-    Serial.println(buffer);
+    Serial.print(F("JSON to "));
+    Serial.print("unishare/devices/setup");
+    Serial.print(F(":"));
+    Serial.print(buffer);
   #endif
   
   mqttClient.publish("unishare/devices/setup", buffer, n);
+
+  #ifdef DEBUG
+    Serial.println(F(" ....OK!"));
+  #endif
   
 }
 
