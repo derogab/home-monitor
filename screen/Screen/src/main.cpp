@@ -25,8 +25,9 @@
 #define MQTT_BUFFER_SIZE 2048               // the maximum size for packets being published and received
 MQTTClient mqttClient(MQTT_BUFFER_SIZE);   // handles the MQTT communication protocol
 WiFiClient networkClient;                  // handles the network connection to the MQTT broker
-#define MQTT_TOPIC_DEVICES "unishare/devices/all_devices" 
+#define MQTT_TOPIC_DEVICES "unishare/devices/all_sensors" 
 #define MQTT_TOPIC_SENSORS "unishare/sensors/"
+#define MQTT_TOPIC_SETUP "unishare/devices/setup" 
 
 // WiFi cfg
 char ssid[] = SECRET_SSID; // your network SSID (name)
@@ -120,29 +121,50 @@ void setup()
   mqttClient.onMessage(mqttMessageReceived);              // callback on message received from MQTT broker
 }
 
-
-
+bool sent_setup = false;
 void loop()
 { 
-  connectToWiFi();   // connect to WiFi (if not already connected)
-  connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
+  if (!sent_setup){
+    connectToWiFi();   // connect to WiFi (if not already connected)
+    connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
+    DynamicJsonDocument doc(256);
+    String to_replace = String(':');
+    String replaced = "";
+    String mac_address = String(WiFi.macAddress());
+    mac_address.replace(to_replace, replaced);
+    doc["mac_address"] = mac_address;
+    doc["type"] = "sensors";
+    doc["name"] = "schermo1";
+    char buffer[256];
+    size_t n = serializeJson(doc, buffer);
 
-  if(!mqttClient.loop()){
     #ifdef DEBUG
-      Serial.println(mqttClient.lastError());
+      Serial.print(F("JSON setup message: "));
+      Serial.println(buffer);
     #endif
-    mqttClient.disconnect();
-  }
+  
+    if(mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
+      sent_setup = true;
+  } else {
+    connectToWiFi();   // connect to WiFi (if not already connected)
+    connectToMQTTBroker();   // connect to MQTT broker (if not already connected)
+
+    if(!mqttClient.loop()){
+      #ifdef DEBUG
+        Serial.println(mqttClient.lastError());
+      #endif
+      mqttClient.disconnect();
+    }
     
-  if (alarm_active && flame)
-    digitalWrite(BUZZER, HIGH);
-  else
-    digitalWrite(BUZZER, LOW);
+    if (alarm_active && flame)
+      digitalWrite(BUZZER, HIGH);
+    else
+      digitalWrite(BUZZER, LOW);
+  }
       
 }
 
 // Helpers
-
 void isrInc()
 {
   unsigned long now = millis();
