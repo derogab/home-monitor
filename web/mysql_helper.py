@@ -29,6 +29,19 @@ def get_all_devices():
             devices.append((row['MAC_ADDRESS'], row['NAME'], row['TYPE']))
         return devices
 
+def get_all_sensors():
+    conn = connect_db()
+    with conn.cursor() as cursor:
+        sql = "SELECT * FROM `home-monitor-devices` WHERE (lower(TYPE) LIKE 'sensors');"
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        devices = []
+        row: dict
+        for row in result:
+            devices.append((row['MAC_ADDRESS'], row['NAME'], row['TYPE']))
+        return devices
+
+
 def exist_device_in_db(mac_address):
     conn = connect_db()
     with conn.cursor() as cursor:
@@ -39,14 +52,14 @@ def exist_device_in_db(mac_address):
 
 def add_device_to_db(mac_address, name, dev_type):
     if exist_device_in_db(mac_address):
-        print("Device already in db")
-        return
+        print("Device ", mac_address, "already in db")
+        return False
     conn = connect_db()
     with conn.cursor() as cursor:
         sql = "INSERT INTO `home-monitor-devices` VALUES(%s, %s, %s)"
         cursor.execute(sql, (mac_address, name, dev_type,))
         conn.commit()
-        return
+        return True
 
 
 
