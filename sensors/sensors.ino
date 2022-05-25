@@ -445,7 +445,7 @@ void sendNumericDataToMQTT(String attribute, double value) {
   bool result = mqttClient.publish(topic_c, buffer, n);
 
   #ifdef DEBUG
-    if (bool) Serial.println(F(" ....OK!")); else Serial.println(F(" ....FAIL!"));
+    if (result) Serial.println(F(" ....OK!")); else Serial.println(F(" ....FAIL!"));
   #endif
   
 }
