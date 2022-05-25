@@ -5,14 +5,16 @@
 #include <DHT.h>
 // Include WIFi Library
 #include <ESP8266WiFi.h>
-// InfluxDB library
-#include <InfluxDbClient.h>
+// Include JSON Library
+#include <ArduinoJson.h>
+// Include MQTT Library
+#include <MQTT.h>
 
 // Include SECRETs
 #include "secrets.h"
 
 // Init Mode
-//#define DEBUG true
+#define DEBUG
 
 // Sensors
 // --------------
@@ -21,52 +23,60 @@
 #define LED2 D4
 // Flame Detector
 #define FLAME D1
+#define FLAME_LOG_DELAY 30000
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
-#define DHT_TYPE DHT11 // Sensor type: DHT 11
-#define DHT_DELAY 10000 // Needed delay for DHT sensors
+#define DHT_TYPE DHT11   // Sensor type: DHT 11
+#define DHT_DELAY 30000 // Needed delay for DHT sensors (Warning! Min = 2000)
 // Photoresistor
-#define PHOTORESISTOR A0              // photoresistor pin
-#define PHOTORESISTOR_THRESHOLD 900   // turn led on for light values lesser than this
-#define PHOTORESISTOR_LOG_DELAY 1500
+#define PHOTORESISTOR A0            // photoresistor pin
+#define PHOTORESISTOR_THRESHOLD 900 // turn led on for light values lesser than this
+#define PHOTORESISTOR_LOG_DELAY 30000
 // WiFi signal
-#define RSSI_THRESHOLD -60            // WiFi signal strength threshold
+#define RSSI_THRESHOLD -60 // WiFi signal strength threshold
+#define RSSI_LOG_DELAY 30000
 
+#define MQTT_TOPIC_SETUP "unishare/devices/setup"
 
 // Init
 // --------------
 // Initialize millis var
 unsigned long currentTime;
+// Initialize setup time
+unsigned long lastSetupTime = 0;
 // Initialize temperature & humidity time
 unsigned long lastTempTime = 0;
 // Initialize photoresistor log time
 unsigned long lastLightLogTime = 0;
-// Initialize database log time
-unsigned long lastRoomDatabaseLog = 0;
-unsigned long lastWifiDatabaseLog = 0;
+// Initialize flame log time
+unsigned long lastFlameLogTime = 0;
+// Initialize rssi log time
+unsigned long lastRssiLog = 0;
 // Initialize DHT sensor
 DHT dht = DHT(DHT_PIN, DHT_TYPE);
 
 // Configs
 // --------------
 // WiFi config
-char ssid[] = SECRET_SSID;   // your network SSID (name)
-char pass[] = SECRET_PASS;   // your network password
+char ssid[] = SECRET_SSID; // your network SSID (name)
+char pass[] = SECRET_PASS; // your network password
 #ifdef IP
 IPAddress ip(IP);
 IPAddress subnet(SUBNET);
 IPAddress dns(DNS);
 IPAddress gateway(GATEWAY);
 #endif
-WiFiClient client;
-// InfluxDB cfg
-InfluxDBClient client_idb(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-Point pointDevice("device_status");
-Point pointRoom("room_status");
-#define WIFI_DATA_DB_DELAY 10000
-#define ROOM_DATA_DB_DELAY 4000
+// MQTT cfg
+#define MQTT_BUFFER_SIZE 1024            // the maximum size for packets being published and received
+MQTTClient mqttClient(MQTT_BUFFER_SIZE); // handles the MQTT communication protocol
+WiFiClient networkClient;                // handles the network connection to the MQTT broker
 
-// Init
+String clean_mac_address;
+String sensors_topic = "unishare/sensors/";
+
+// Globals
+// --------------
+// Sensors data values
 bool data_light;
 bool data_flame;
 double data_temperature;
@@ -75,7 +85,8 @@ double data_humidity;
 
 // CODE
 
-void setup() {
+void setup()
+{
   // Sync Serial logs
   Serial.begin(115200);
 
@@ -91,163 +102,196 @@ void setup() {
   // Start DHT
   dht.begin();
 
+  // Start MQTT
+  mqttClient.begin(MQTT_BROKERIP, 1883, networkClient); // setup communication with MQTT broker
+  mqttClient.onMessage(mqttMessageReceived);            // callback on message received from MQTT broker
+
   // Start WiFi
   WiFi.mode(WIFI_STA);
 
+#ifdef DEBUG
+  Serial.println("Setup completed!");
+#endif
+
   // Init delay
   delay(2000);
-
 }
 
-void loop() {
-  
-  // Get millis time
-  currentTime = millis();
+bool sent_setup = false;
+void loop()
+{
+  if (!sent_setup)
+  {
+    connectToWiFi();       // connect to WiFi (if not already connected)
+    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
+    clean_mac_address = clearMacAddress(String(WiFi.macAddress()));
+    DynamicJsonDocument doc(256);
+    doc["mac_address"] = clean_mac_address;
+    doc["type"] = "screen";
+    doc["name"] = "schermo1";
+    char buffer[256];
+    size_t n = serializeJson(doc, buffer);
 
-  
-  // WIFI
-  // -----------------------------
-  // Init variables
-  int static init_db = 0;
-  bool static led_status = HIGH; // Default: OFF
-  // Connect to WiFi
-  long rssi = connectToWiFi();   // WiFi connect if not established and if connected get wifi signal strength
-  
-  if ((rssi > RSSI_THRESHOLD) && (led_status)) {   // if wifi signal strength is high then keep led on
-    led_status = LOW;
-    digitalWrite(LED2, led_status);
-  } else if ((rssi <= RSSI_THRESHOLD) && (!led_status)) {   // if wifi signal strength is high then keep led off
-    led_status = HIGH;
-    digitalWrite(LED2, led_status);
+#ifdef DEBUG
+    Serial.print(F("JSON setup message: "));
+    Serial.println(buffer);
+#endif
+    if (mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
+      sent_setup = true;
   }
+  else
+  {
+    long rssi = connectToWiFi(); // connect to WiFi (if not already connected)
+    connectToMQTTBroker();       // connect to MQTT broker (if not already connected)
 
-  // DATABASE
-  // -----------------------------
-  // Check database connection
-  check_influxdb();
-  // Check if previously initialized
-  if (init_db == 0) {
-    // Set TAG for Device Status
-    pointDevice.addTag("device", "ESP8266");
-    pointDevice.addTag("SSID", WiFi.SSID());
-    // Set TAG for Room Status
-    pointRoom.addTag("device", "ESP8266");
-    // Set as initialized    
-    init_db = 1;
-  }
-  
-  // Write on DB
-  // Check if frequency is good :)
-  if (currentTime - lastWifiDatabaseLog > WIFI_DATA_DB_DELAY) {
-
-    // Update reading time
-    lastWifiDatabaseLog = currentTime;
-
-    // Write on DB
-    WriteDeviceStatusToDB((int)rssi, led_status);   // write device status on InfluxDB
-    
-  }
-  
-
-  // PHOTORESISTOR
-  // -----------------------------
-  static unsigned int lightSensorValue;
-
-  lightSensorValue = analogRead(PHOTORESISTOR);   // read analog value (range 0-1023)
-
-  if (lightSensorValue >= PHOTORESISTOR_THRESHOLD) {   // high brightness
-    digitalWrite(LED1, HIGH);                          // LED off
-    data_light = true;
-  } else {                                             // low brightness
-    digitalWrite(LED1, LOW);                           // LED on
-    data_light = false;
-  }
-
-  // Check if frequency is good :)
-  if (currentTime - lastLightLogTime > PHOTORESISTOR_LOG_DELAY) {
-
-    // Update reading time
-    lastLightLogTime = currentTime;
-
-    #ifdef DEBUG
-      // Logs
-      Serial.print(F("Light sensor value: "));
-      Serial.println(lightSensorValue);
-    #endif
-  }
-
-
-  // FLAME DETECTION
-  // -----------------------------
-
-  int fire = digitalRead(FLAME); // Read FLAME sensor
-  
-  if(fire == HIGH) {
-
-    #ifdef DEBUG
-      Serial.println("Fire! Fire!");
-    #endif
-    
-    data_flame = true;
-  } else {
-    data_flame = false;
-  }
-
-  // TEMPERATURE & HUMIDITY DETECTION
-  // -------------------------------
-
-  // Check if frequency is good :)
-  if (currentTime - lastTempTime > DHT_DELAY) {
-
-    // Update reading time
-    lastTempTime = currentTime;
-
-    // reading temperature or humidity takes about 250 milliseconds!
-    double h = dht.readHumidity();      // humidity percentage, range 20-80% (±5% accuracy)
-    double t = dht.readTemperature();   // temperature Celsius, range 0-50°C (±2°C accuracy)
-
-    if (isnan(h) || isnan(t)) {   // readings failed, skip
-      Serial.println(F("Failed to read from DHT sensor!"));
-      return;
+    if (!mqttClient.loop())
+    {
+#ifdef DEBUG
+      Serial.println(mqttClient.lastError());
+#endif
+      mqttClient.disconnect();
     }
 
-    // compute heat index in Celsius (isFahreheit = false)
-    double hic = dht.computeHeatIndex(t, h, false);
+    String attribute = "";
+    // Get millis time
+    currentTime = millis();
+    // // Send to MQTT
+    // Check if frequency is good :)
+    if (currentTime - lastRssiLog > RSSI_LOG_DELAY)
+    {
+      // Update reading time
+      lastRssiLog = currentTime;
+      // Send to MQTT
+      attribute = "rssi";
+      sendMqttLong(attribute, rssi);
+    }
+    // PHOTORESISTOR
+    // -----------------------------
+    unsigned int lightSensorValue;
+    currentTime = millis();
+    // Re-send LIGHT data sometimes :)
+    if (currentTime - lastLightLogTime > PHOTORESISTOR_LOG_DELAY)
+    {
+      // Update reading time
+      lastLightLogTime = currentTime;
+      lightSensorValue = analogRead(PHOTORESISTOR); // read analog value (range 0-1023)
+      if (lightSensorValue >= PHOTORESISTOR_THRESHOLD)
+      { // high brightness
+        // Set the LED off
+        digitalWrite(LED1, HIGH);
+        // Update if status is changed
+        // if (data_light == false) sendBooleanDataToMQTT("light", true);
+        // Set status on memory
+        data_light = true;
+      }
+      else
+      { // low brightness
+        // Set the LED on
+        digitalWrite(LED1, LOW);
+        // Update if status is changed
+        // if (data_light == true) sendBooleanDataToMQTT("light", false);
+        // Set status on memory
+        data_light = false;
+      }
 
-    data_humidity = h;
-    data_temperature = t;
-    data_apparent_temperature = hic;
+      // Send data to MQTT
+      attribute = "light";
+      sendMqttBool(attribute, data_light);
+    }
 
-    #ifdef DEBUG
+    // FLAME DETECTION
+    // -----------------------------
+    // Read digital PIN of Flame Sensor
+    int fire = digitalRead(FLAME); // Read FLAME sensor
+    // Check flame level
+    if (fire == HIGH && !data_flame)
+    {
+
+#ifdef DEBUG
+      Serial.println("Fire! Fire!");
+#endif
+
+      // Save flame data
+      data_flame = true;
+
+      // Send data to MQTT
+      attribute = "flame";
+      sendMqttBool(attribute, data_flame);
+    }
+    else if (fire == LOW && data_flame)
+    {
+
+#ifdef DEBUG
+      Serial.println("No more fire!");
+#endif
+      data_flame = false;
+
+      attribute = "flame";
+      sendMqttBool(attribute, data_flame);
+    }
+    currentTime = millis();
+    // Re-send FLAME data sometimes :)
+    if (currentTime - lastFlameLogTime > FLAME_LOG_DELAY)
+    {
+
+      // Update reading time
+      lastFlameLogTime = currentTime;
+
+      attribute = "flame";
+      sendMqttBool(attribute, data_flame);
+    }
+
+    // TEMPERATURE & HUMIDITY DETECTION
+    // -------------------------------
+    currentTime = millis();
+    // Check if frequency is good :)
+    if (currentTime - lastTempTime > DHT_DELAY)
+    {
+
+      // Update reading time
+      lastTempTime = currentTime;
+
+      // reading temperature or humidity takes about 250 milliseconds!
+      double h = dht.readHumidity();    // humidity percentage, range 20-80% (±5% accuracy)
+      double t = dht.readTemperature(); // temperature Celsius, range 0-50°C (±2°C accuracy)
+
+      if (isnan(h) || isnan(t))
+      { // readings failed, skip
+        Serial.println(F("Failed to read from DHT sensor!"));
+        return;
+      }
+
+      // compute heat index in Celsius (isFahreheit = false)
+      double hic = dht.computeHeatIndex(t, h, false);
+
+      data_humidity = h;
+      data_temperature = t;
+      data_apparent_temperature = hic;
+
+#ifdef DEBUG
       Serial.print(F("Humidity: "));
-      Serial.print(h);   
+      Serial.print(h);
       Serial.print(F("%  Temperature: "));
       Serial.print(t);
-      Serial.print(F("°C  Apparent temperature: "));   // the temperature perceived by humans (takes into account humidity)
+      Serial.print(F("°C  Apparent temperature: ")); // the temperature perceived by humans (takes into account humidity)
       Serial.print(hic);
       Serial.println(F("°C"));
-    #endif
-    
+#endif
+
+      attribute = "humidity";
+      sendMqttDouble(attribute, data_humidity);
+      attribute = "temperature";
+      sendMqttDouble(attribute, data_temperature);
+      attribute = "apparent_temperature";
+      sendMqttDouble(attribute, data_apparent_temperature);
+    }
   }
-
-
-  // Write on DB
-  // Check if frequency is good :)
-  if (currentTime - lastRoomDatabaseLog > ROOM_DATA_DB_DELAY) {
-
-    // Update reading time
-    lastRoomDatabaseLog = currentTime;
-
-    // Write on DB
-    WriteRoomStatusToDB(data_temperature, data_apparent_temperature, data_humidity, data_light, data_flame);
-    
-  }
-
 }
 
-// Functons
+// Functions
 // -------------------------------
-void printWifiStatus() {
+void printWifiStatus()
+{
   Serial.println(F("\n=== WiFi connection status ==="));
 
   // SSID
@@ -278,101 +322,163 @@ void printWifiStatus() {
   Serial.println(F("==============================\n"));
 }
 
-long connectToWiFi() {
+long connectToWiFi()
+{
   long rssi_strength;
   // connect to WiFi (if not already connected)
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED)
+  {
     Serial.print(F("Connecting to SSID: "));
     Serial.println(ssid);
 
 #ifdef IP
-    WiFi.config(ip, dns, gateway, subnet);   // by default network is configured using DHCP
+    WiFi.config(ip, dns, gateway, subnet); // by default network is configured using DHCP
 #endif
 
-    #ifdef DEBUG
-      Serial.print(F("Connecting"));
-    #endif
+#ifdef DEBUG
+    Serial.print(F("Connecting"));
+#endif
     WiFi.begin(ssid, pass);
-    while (WiFi.status() != WL_CONNECTED) {
-      #ifdef DEBUG
-        Serial.print(F("."));
-      #endif
+    while (WiFi.status() != WL_CONNECTED)
+    {
+#ifdef DEBUG
+      Serial.print(F("."));
+#endif
       delay(150);
     }
-    #ifdef DEBUG
-      Serial.println(F("\nConnected!"));
-    #endif
-    
-    rssi_strength = WiFi.RSSI();   // get wifi signal strength
-    
-    #ifdef DEBUG
-      printWifiStatus();
-    #endif
-  
-  } else {
-    rssi_strength = WiFi.RSSI();   // get wifi signal strength
+#ifdef DEBUG
+    Serial.println(F("\nConnected!"));
+#endif
+
+    rssi_strength = WiFi.RSSI(); // get wifi signal strength
+
+#ifdef DEBUG
+    printWifiStatus();
+#endif
+  }
+  else
+  {
+    rssi_strength = WiFi.RSSI(); // get wifi signal strength
   }
 
   return rssi_strength;
 }
 
-void check_influxdb() {
-  // Check server connection
-  if (!client_idb.validateConnection()) {
-    Serial.print(F("InfluxDB connection failed: "));
-    Serial.println(client_idb.getLastErrorMessage());
-  }
-  else {
+void connectToMQTTBroker()
+{
+  if (!mqttClient.connected())
+  { // not connected
 
-    // Get Server URL
-    String url = client_idb.getServerUrl();
+#ifdef DEBUG
+    Serial.print(F("\nConnecting to MQTT broker..."));
+#endif
 
-    #ifdef DEBUG
-      Serial.print(F("Connected to InfluxDB: "));
-      Serial.println(url);
-    #endif
+    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD))
+    {
+      Serial.print(F("."));
+      delay(150);
+    }
+
+#ifdef DEBUG
+    Serial.println(F("\nConnected!"));
+#endif
   }
 }
 
-void WriteDeviceStatusToDB(int rssi, int led_status) {
-  // Store measured value into point
-  pointDevice.clearFields();
-  // Report RSSI of currently connected network
-  pointDevice.addField("rssi", rssi);
-  pointDevice.addField("led_status", led_status);
+void mqttMessageReceived(String &topic, String &payload)
+{
+// This function handles a message from the MQTT broker
+#ifdef DEBUG
+  Serial.println("Incoming MQTT message: " + topic + " - " + payload);
+#endif
 
-  #ifdef DEBUG
-    Serial.print(F("Writing: "));
-    Serial.println(pointDevice.toLineProtocol());
-  #endif
-  
-  // Write on DB
-  if (!client_idb.writePoint(pointDevice)) {
-    Serial.print(F("InfluxDB write failed: "));
-    Serial.println(client_idb.getLastErrorMessage());
+  if (topic == "example")
+  {
+    // deserialize the JSON object
+    // StaticJsonDocument<128> doc;
+    // deserializeJson(doc, payload);
+    // const char *desiredLedStatus = doc["status"];
+
+    Serial.println(F("Do something here."));
   }
-
 }
 
-void WriteRoomStatusToDB(double temperature, double apparent_temperature, double humidity, bool light, bool flame) {
-  // Store measured value into point
-  pointRoom.clearFields();
-  // Report all room status data on database
-  pointRoom.addField("temperature", temperature);
-  pointRoom.addField("apparent_temperature", apparent_temperature);
-  pointRoom.addField("humidity", humidity);
-  pointRoom.addField("light", light);
-  pointRoom.addField("flame", flame);
-  
-  #ifdef DEBUG
-    Serial.print(F("Writing: "));
-    Serial.println(pointRoom.toLineProtocol());
-  #endif
-  
-  // Write on DB
-  if (!client_idb.writePoint(pointRoom)) {
-    Serial.print(F("InfluxDB write failed: "));
-    Serial.println(client_idb.getLastErrorMessage());
-  }
+String clearMacAddress(String mac_address)
+{
+  // Prepare
+  String to_replace = String(':');
+  String replaced = "";
+  // Exec
+  mac_address.replace(to_replace, replaced);
+  // Return
+  return mac_address;
+}
 
+void sendMqttDouble(String attribute, double value)
+{
+  // Send data to MQTT
+  DynamicJsonDocument doc(128);
+  doc["value"] = value;
+  char buffer[128];
+  size_t n = serializeJson(doc, buffer);
+  String topic = sensors_topic + clean_mac_address + "/" + attribute;
+  const char *topic_c = topic.c_str();
+  bool sent = false;
+  if (mqttClient.publish(topic_c, buffer, n, true, 1))
+    sent = true;
+#ifdef DEBUG
+  Serial.println(topic);
+  Serial.print(F("JSON message: "));
+  Serial.println(buffer);
+  if (sent)
+    Serial.println("Send OK");
+  else
+    Serial.println("Send NOT OK");
+#endif
+}
+
+void sendMqttLong(String attribute, long value)
+{
+  // Send data to MQTT
+  DynamicJsonDocument doc(128);
+  doc["value"] = value;
+  char buffer[128];
+  size_t n = serializeJson(doc, buffer);
+  String topic = sensors_topic + clean_mac_address + "/" + attribute;
+  const char *topic_c = topic.c_str();
+  bool sent = false;
+  if (mqttClient.publish(topic_c, buffer, n, true, 1))
+    sent = true;
+#ifdef DEBUG
+  Serial.println(topic);
+  Serial.print(F("JSON message: "));
+  Serial.println(buffer);
+  if (sent)
+    Serial.println("Send OK");
+  else
+    Serial.println("Send NOT OK");
+#endif
+}
+
+void sendMqttBool(String attribute, bool value)
+{
+  // Send data to MQTT
+  DynamicJsonDocument doc(128);
+  doc["value"] = value;
+  char buffer[128];
+  size_t n = serializeJson(doc, buffer);
+  String topic = sensors_topic + clean_mac_address + "/" + attribute;
+  const char *topic_c = topic.c_str();
+  bool sent = false;
+  if (mqttClient.publish(topic_c, buffer, n, true, 1))
+    sent = true;
+#ifdef DEBUG
+  Serial.println(topic);
+  Serial.print(F("JSON message: "));
+  Serial.println(buffer);
+  if (sent)
+    Serial.println("Send OK");
+  else
+    Serial.println("Send NOT OK");
+#endif
 }
