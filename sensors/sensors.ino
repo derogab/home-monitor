@@ -37,10 +37,15 @@
 #define RSSI_LOG_DELAY 15000
 
 
+#define SETUP_LOG_DELAY 60000
+
+
 // Init
 // --------------
 // Initialize millis var
 unsigned long currentTime;
+// Initialize setup time
+unsigned long lastSetupTime = 0;
 // Initialize temperature & humidity time
 unsigned long lastTempTime = 0;
 // Initialize photoresistor log time
@@ -68,8 +73,6 @@ IPAddress gateway(GATEWAY);
 #define MQTT_BUFFER_SIZE 1024               // the maximum size for packets being published and received
 MQTTClient mqttClient(MQTT_BUFFER_SIZE);   // handles the MQTT communication protocol
 WiFiClient networkClient;                  // handles the network connection to the MQTT broker
-#define MQTT_TOPIC_SETUP "setup"   // topic to control the led
-#define MQTT_TOPIC_DATA "data"     // topic to publish the led status
 
 // Globals
 // --------------
@@ -144,6 +147,17 @@ void loop() {
   if(!mqttClient.loop()){
     Serial.print(F("MQTT Error: "));  
     Serial.println(mqttClient.lastError());
+  }
+
+  // Send to MQTT
+  // Check if frequency is good :)
+  if (currentTime - lastSetupTime > SETUP_LOG_DELAY) {
+
+    // Update reading time
+    lastSetupTime = currentTime;
+
+    // Send Setup
+    sendSetup("test_name");
   }
   
   // Send to MQTT
@@ -379,7 +393,7 @@ void mqttMessageReceived(String &topic, String &payload) {
   // This function handles a message from the MQTT broker
   #ifdef DEBUG
     Serial.println("Incoming MQTT message: " + topic + " - " + payload);
-  #endif 
+  #endif
   
   if (topic == "example") {
     // deserialize the JSON object
@@ -395,8 +409,6 @@ void sendNumericDataToMQTT(String attribute, double value) {
   
   // Publish new MQTT data (as a JSON object)
   DynamicJsonDocument doc(1024);
-  doc["mac"] = WiFi.macAddress();
-  doc["type"] = attribute;
   doc["value"] = value;
   char buffer[1024];
   size_t n = serializeJson(doc, buffer);
@@ -405,18 +417,46 @@ void sendNumericDataToMQTT(String attribute, double value) {
     Serial.print(F("JSON message: "));
     Serial.println(buffer);
   #endif
+
+  String topic = "unishare/sensors/"+clearMacAddress(String(WiFi.macAddress()))+"/"+attribute;
+  int topic_len = topic.length() + 1; 
+  char topic_c[topic_len];
+  topic.toCharArray(topic_c, topic_len);
   
-  mqttClient.publish(MQTT_TOPIC_DATA, buffer, n);
+  mqttClient.publish(topic_c, buffer, n);
   
 }
 
 void sendBooleanDataToMQTT(String attribute, bool value) {
+
+  // Publish new MQTT data (as a JSON object)
+  const int capacity = JSON_OBJECT_SIZE(1);
+  StaticJsonDocument<capacity> doc;
+  doc["value"] = value;
+  char buffer[128];
+  size_t n = serializeJson(doc, buffer);
+
+  #ifdef DEBUG
+    Serial.print(F("JSON message: "));
+    Serial.println(buffer);
+  #endif
+
+  String topic = "unishare/sensors/"+clearMacAddress(String(WiFi.macAddress()))+"/"+attribute;
+  int topic_len = topic.length() + 1; 
+  char topic_c[topic_len];
+  topic.toCharArray(topic_c, topic_len);
+  
+  mqttClient.publish(topic_c, buffer, n);
+  
+}
+
+void sendSetup(String device_name) {
   
   // Publish new MQTT data (as a JSON object)
   DynamicJsonDocument doc(1024);
-  doc["mac"] = WiFi.macAddress();
-  doc["type"] = attribute;
-  doc["value"] = value;
+  doc["mac_addr"] = clearMacAddress(String(WiFi.macAddress()));
+  doc["name"] = "sensors";
+  doc["type"] = device_name;
   char buffer[1024];
   size_t n = serializeJson(doc, buffer);
 
@@ -425,6 +465,16 @@ void sendBooleanDataToMQTT(String attribute, bool value) {
     Serial.println(buffer);
   #endif
   
-  mqttClient.publish(MQTT_TOPIC_DATA, buffer, n);
+  mqttClient.publish("unishare/devices/setup", buffer, n);
   
+}
+
+String clearMacAddress(String mac_address) {
+  // Prepare
+  String to_replace = String(':');
+  String replaced = "";
+  // Exec
+  mac_address.replace(to_replace, replaced);
+  // Return
+  return mac_address;
 }
