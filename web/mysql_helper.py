@@ -51,15 +51,21 @@ def exist_device_in_db(mac_address):
         return bool(len(result) == 1)
 
 def add_device_to_db(mac_address, name, dev_type):
-    if exist_device_in_db(mac_address):
-        print("Device ", mac_address, "already in db")
-        return False
     conn = connect_db()
-    with conn.cursor() as cursor:
-        sql = "INSERT INTO `home-monitor-devices` VALUES(%s, %s, %s)"
-        cursor.execute(sql, (mac_address, name, dev_type,))
-        conn.commit()
-        return True
+    if exist_device_in_db(mac_address):
+        print("Device ", mac_address, " already in db, with updating name ", name)
+        with conn.cursor() as cursor:
+            sql = "UPDATE `home-monitor-devices` SET `NAME` = %s WHERE `home-monitor-devices`.`MAC_ADDRESS` = %s;"
+            cursor.execute(sql, (name, mac_address))
+            conn.commit()
+            return True
+    else:
+        print("Adding device ", mac_address, " with name ", name, " type ", dev_type)      
+        with conn.cursor() as cursor:
+            sql = "INSERT INTO `home-monitor-devices` VALUES(%s, %s, %s)"
+            cursor.execute(sql, (mac_address, name, dev_type,))
+            conn.commit()
+            return True
 
 
 
