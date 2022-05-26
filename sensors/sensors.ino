@@ -23,18 +23,18 @@
 #define LED2 D4
 // Flame Detector
 #define FLAME D1
-#define FLAME_LOG_DELAY 600000
+#define FLAME_LOG_DELAY 60000
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
 #define DHT_TYPE DHT11  // Sensor type: DHT 11
-#define DHT_DELAY 600000 // Needed delay for DHT sensors (Warning! Min = 2000)
+#define DHT_DELAY 60000 // Needed delay for DHT sensors (Warning! Min = 2000)
 // Photoresistor
 #define PHOTORESISTOR A0            // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900 // turn led on for light values lesser than this
-#define PHOTORESISTOR_LOG_DELAY 600000
+#define PHOTORESISTOR_LOG_DELAY 60000
 // WiFi signal
 #define RSSI_THRESHOLD -60 // WiFi signal strength threshold
-#define RSSI_LOG_DELAY 600000
+#define RSSI_LOG_DELAY 60000
 
 #define MQTT_TOPIC_SETUP "unishare/devices/setup"
 
@@ -102,6 +102,7 @@ double data_humidity;
 // actuators values;
 double ac_temp;
 String ac_mode;
+String ac_previous_state;
 
 // CODE
 void setup()
@@ -610,22 +611,36 @@ void loop()
 
   void acAutoControl()
   {
+    String ac_current_state;
     if (data_temperature >= ac_temp)
     {
-      digitalWrite(AC_R, LOW);
-      digitalWrite(AC_G, LOW);
-      digitalWrite(AC_B, HIGH);
-#ifdef DEBUG
-      Serial.println("High temp, turn AC on");
-#endif
+      ac_current_state = "on";
     }
     else
     {
-      digitalWrite(AC_R, HIGH);
-      digitalWrite(AC_G, LOW);
-      digitalWrite(AC_B, HIGH);
+      ac_current_state = "off";
+    }
+
+    if (ac_current_state != ac_previous_state)
+    {
+      ac_previous_state = ac_current_state;
+
+      if(ac_current_state == "on")
+      {
+        digitalWrite(AC_R, LOW);
+        digitalWrite(AC_G, LOW);
+        digitalWrite(AC_B, HIGH);
 #ifdef DEBUG
-      Serial.println("Low temp, turn AC off");
+        Serial.println("High temp, turn AC on");
 #endif
+      }else
+      {
+        digitalWrite(AC_R, HIGH);
+        digitalWrite(AC_G, LOW);
+        digitalWrite(AC_B, HIGH);
+#ifdef DEBUG
+        Serial.println("Low temp, turn AC off");
+#endif   
+      }
     }
   }
