@@ -93,6 +93,10 @@ double data_temperature;
 double data_apparent_temperature;
 double data_humidity;
 
+// actuators values;
+double ac_temp;
+String ac_mode;
+
 // CODE
 
 void setup()
@@ -301,7 +305,24 @@ void loop()
       Serial.print(hic);
       Serial.println(F("°C"));
 #endif
-
+      if (data_temperature >= ac_temp)
+      {
+        digitalWrite(AC_R, LOW);
+        digitalWrite(AC_G, LOW);
+        digitalWrite(AC_B, HIGH);
+#ifdef DEBUG
+        Serial.println("High temp, turn AC on");
+#endif
+      }
+      else
+      {
+        digitalWrite(AC_R, HIGH);
+        digitalWrite(AC_G, LOW);
+        digitalWrite(AC_B, HIGH);
+#ifdef DEBUG
+        Serial.println("Low temp, turn AC off");
+#endif
+      }
       attribute = "humidity";
       sendMqttDouble(attribute, data_humidity);
       attribute = "temperature";
@@ -410,8 +431,8 @@ void connectToMQTTBroker()
     mqttClient.subscribe(light_control_topic);
     mqttClient.subscribe(ac_control_topic);
 #ifdef DEBUG
-    Serial.printf("Subscribed to %s topic! \n", light_control_topic);
-    Serial.printf("Subscribed to %s topic! \n", ac_control_topic);
+    Serial.println("Subscribed to " + light_control_topic + "topic");
+    Serial.println("Subscribed to " + ac_control_topic + "topic");
 #endif
   }
 }
@@ -455,10 +476,10 @@ void mqttMessageReceived(String &topic, String &payload)
   }
   if (topic == ac_control_topic)
   {
-    StaticJsonDocument<128> doc;
+    StaticJsonDocument<256> doc;
     deserializeJson(doc, payload);
-    String ac_control = doc["control"];
-    if (ac_control == "on")
+    ac_mode = doc["control"].as<String>();;
+    if (ac_mode == "on")
     {
       digitalWrite(AC_R, LOW);
       digitalWrite(AC_G, HIGH);
@@ -468,7 +489,7 @@ void mqttMessageReceived(String &topic, String &payload)
 #endif
       return;
     }
-    else if (ac_control == "off")
+    else if (ac_mode == "off")
     {
       digitalWrite(AC_R, HIGH);
       digitalWrite(AC_G, LOW);
@@ -478,13 +499,13 @@ void mqttMessageReceived(String &topic, String &payload)
 #endif
       return;
     }
-    else if (ac_control == "auto")
+    else if (ac_mode == "auto")
     {
-      digitalWrite(AC_R, LOW);
-      digitalWrite(AC_G, LOW);
-      digitalWrite(AC_B, HIGH);
+      ac_temp = doc["temp"];
 #ifdef DEBUG
-      Serial.println("AC a  uto");
+      Serial.println("AC auto");
+      Serial.printf("Actual temperature: %f \n", data_temperature);
+      Serial.printf("Desired temperature: %f \n", ac_temp);
 #endif
       return;
     }
