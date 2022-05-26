@@ -23,18 +23,18 @@
 #define LED2 D4
 // Flame Detector
 #define FLAME D1
-#define FLAME_LOG_DELAY 30000
+#define FLAME_LOG_DELAY 600000
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
 #define DHT_TYPE DHT11  // Sensor type: DHT 11
-#define DHT_DELAY 30000 // Needed delay for DHT sensors (Warning! Min = 2000)
+#define DHT_DELAY 600000 // Needed delay for DHT sensors (Warning! Min = 2000)
 // Photoresistor
 #define PHOTORESISTOR A0            // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900 // turn led on for light values lesser than this
-#define PHOTORESISTOR_LOG_DELAY 30000
+#define PHOTORESISTOR_LOG_DELAY 600000
 // WiFi signal
 #define RSSI_THRESHOLD -60 // WiFi signal strength threshold
-#define RSSI_LOG_DELAY 30000
+#define RSSI_LOG_DELAY 600000
 
 #define MQTT_TOPIC_SETUP "unishare/devices/setup"
 
@@ -104,7 +104,6 @@ double ac_temp;
 String ac_mode;
 
 // CODE
-
 void setup()
 {
   // Sync Serial logs
