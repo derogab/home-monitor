@@ -1,0 +1,8 @@
+IOT_HOST = ""
+
+MQTT_BROKERIP = ""
+MQTT_ID = ""
+MQTT_PW = ""
+
+MYSQL_ID = ""
+MYSQL_PW = ""
