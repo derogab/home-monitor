@@ -45,6 +45,8 @@
 #define AC_G D7
 #define AC_B D8
 
+#define AC_CONTROL_DELAY 60000
+
 // Init
 // --------------
 // Initialize millis var
@@ -59,6 +61,10 @@ unsigned long lastLightLogTime = 0;
 unsigned long lastFlameLogTime = 0;
 // Initialize rssi log time
 unsigned long lastRssiLog = 0;
+// Initialize ac control time
+unsigned long lastAcControl = 0;
+bool temp_read = false;
+
 // Initialize DHT sensor
 DHT dht = DHT(DHT_PIN, DHT_TYPE);
 
@@ -272,6 +278,7 @@ void loop()
     // TEMPERATURE & HUMIDITY DETECTION
     // -------------------------------
     currentTime = millis();
+    temp_read = false;
     // Check if frequency is good :)
     if (currentTime - lastTempTime > DHT_DELAY)
     {
@@ -289,6 +296,7 @@ void loop()
         return;
       }
 
+      temp_read = true;
       // compute heat index in Celsius (isFahreheit = false)
       double hic = dht.computeHeatIndex(t, h, false);
 
@@ -305,24 +313,7 @@ void loop()
       Serial.print(hic);
       Serial.println(F("°C"));
 #endif
-      if (data_temperature >= ac_temp)
-      {
-        digitalWrite(AC_R, LOW);
-        digitalWrite(AC_G, LOW);
-        digitalWrite(AC_B, HIGH);
-#ifdef DEBUG
-        Serial.println("High temp, turn AC on");
-#endif
-      }
-      else
-      {
-        digitalWrite(AC_R, HIGH);
-        digitalWrite(AC_G, LOW);
-        digitalWrite(AC_B, HIGH);
-#ifdef DEBUG
-        Serial.println("Low temp, turn AC off");
-#endif
-      }
+
       attribute = "humidity";
       sendMqttDouble(attribute, data_humidity);
       attribute = "temperature";
@@ -330,272 +321,312 @@ void loop()
       attribute = "apparent_temperature";
       sendMqttDouble(attribute, data_apparent_temperature);
     }
+
+    // automatic AC control
+    if (ac_mode == "auto" && (currentTime - lastAcControl > AC_CONTROL_DELAY))
+    {
+      if (!temp_read)
+      {
+        double t = dht.readTemperature(); // temperature Celsius, range 0-50°C (±2°C accuracy)
+
+        if (isnan(t))
+        { // readings failed, skip
+          Serial.println(F("Failed to read from DHT sensor!"));
+          return;
+        }    
+        data_temperature = t;
+      }
+      acAutoControl();
+    }
   }
 }
 
-// Functions
-// -------------------------------
-void printWifiStatus()
-{
-  Serial.println(F("\n=== WiFi connection status ==="));
-
-  // SSID
-  Serial.print(F("SSID: "));
-  Serial.println(WiFi.SSID());
-
-  // signal strength
-  Serial.print(F("Signal strength (RSSI): "));
-  Serial.print(WiFi.RSSI());
-  Serial.println(F(" dBm"));
-
-  // current IP
-  Serial.print(F("IP Address: "));
-  Serial.println(WiFi.localIP());
-
-  // subnet mask
-  Serial.print(F("Subnet mask: "));
-  Serial.println(WiFi.subnetMask());
-
-  // gateway
-  Serial.print(F("Gateway IP: "));
-  Serial.println(WiFi.gatewayIP());
-
-  // DNS
-  Serial.print(F("DNS IP: "));
-  Serial.println(WiFi.dnsIP());
-
-  Serial.println(F("==============================\n"));
-}
-
-long connectToWiFi()
-{
-  long rssi_strength;
-  // connect to WiFi (if not already connected)
-  if (WiFi.status() != WL_CONNECTED)
+  // Functions
+  // -------------------------------
+  void printWifiStatus()
   {
-    Serial.print(F("Connecting to SSID: "));
-    Serial.println(ssid);
+    Serial.println(F("\n=== WiFi connection status ==="));
+
+    // SSID
+    Serial.print(F("SSID: "));
+    Serial.println(WiFi.SSID());
+
+    // signal strength
+    Serial.print(F("Signal strength (RSSI): "));
+    Serial.print(WiFi.RSSI());
+    Serial.println(F(" dBm"));
+
+    // current IP
+    Serial.print(F("IP Address: "));
+    Serial.println(WiFi.localIP());
+
+    // subnet mask
+    Serial.print(F("Subnet mask: "));
+    Serial.println(WiFi.subnetMask());
+
+    // gateway
+    Serial.print(F("Gateway IP: "));
+    Serial.println(WiFi.gatewayIP());
+
+    // DNS
+    Serial.print(F("DNS IP: "));
+    Serial.println(WiFi.dnsIP());
+
+    Serial.println(F("==============================\n"));
+  }
+
+  long connectToWiFi()
+  {
+    long rssi_strength;
+    // connect to WiFi (if not already connected)
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      Serial.print(F("Connecting to SSID: "));
+      Serial.println(ssid);
 
 #ifdef IP
-    WiFi.config(ip, dns, gateway, subnet); // by default network is configured using DHCP
+      WiFi.config(ip, dns, gateway, subnet); // by default network is configured using DHCP
 #endif
 
 #ifdef DEBUG
-    Serial.print(F("Connecting"));
+      Serial.print(F("Connecting"));
 #endif
-    WiFi.begin(ssid, pass);
-    while (WiFi.status() != WL_CONNECTED)
-    {
+      WiFi.begin(ssid, pass);
+      while (WiFi.status() != WL_CONNECTED)
+      {
 #ifdef DEBUG
-      Serial.print(F("."));
+        Serial.print(F("."));
 #endif
-      delay(150);
-    }
+        delay(150);
+      }
 #ifdef DEBUG
-    Serial.println(F("\nConnected!"));
+      Serial.println(F("\nConnected!"));
 #endif
 
-    rssi_strength = WiFi.RSSI(); // get wifi signal strength
-
-#ifdef DEBUG
-    printWifiStatus();
-#endif
-  }
-  else
-  {
-    rssi_strength = WiFi.RSSI(); // get wifi signal strength
-  }
-
-  return rssi_strength;
-}
-
-void connectToMQTTBroker()
-{
-  if (!mqttClient.connected())
-  { // not connected
+      rssi_strength = WiFi.RSSI(); // get wifi signal strength
 
 #ifdef DEBUG
-    Serial.print(F("\nConnecting to MQTT broker..."));
+      printWifiStatus();
 #endif
-
-    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD))
-    {
-      Serial.print(F("."));
-      delay(150);
-    }
-
-#ifdef DEBUG
-    Serial.println(F("\nConnected!"));
-#endif
-
-    mqttClient.subscribe(light_control_topic);
-    mqttClient.subscribe(ac_control_topic);
-#ifdef DEBUG
-    Serial.println("Subscribed to " + light_control_topic + "topic");
-    Serial.println("Subscribed to " + ac_control_topic + "topic");
-#endif
-  }
-}
-
-void mqttMessageReceived(String &topic, String &payload)
-{
-// This function handles a message from the MQTT broker
-#ifdef DEBUG
-  Serial.println("Incoming MQTT message: " + topic + " - " + payload);
-#endif
-  if (topic == light_control_topic)
-  {
-
-    StaticJsonDocument<128> doc;
-    deserializeJson(doc, payload);
-    String light_control = doc["control"];
-
-    if (light_control == "on")
-    {
-      digitalWrite(LIGHT, HIGH);
-#ifdef DEBUG
-      Serial.println("Light on");
-#endif
-      return;
-    }
-    else if (light_control == "off")
-    {
-      digitalWrite(LIGHT, LOW);
-#ifdef DEBUG
-      Serial.println("Light off");
-#endif
-      return;
     }
     else
     {
+      rssi_strength = WiFi.RSSI(); // get wifi signal strength
+    }
+
+    return rssi_strength;
+  }
+
+  void connectToMQTTBroker()
+  {
+    if (!mqttClient.connected())
+    { // not connected
+
 #ifdef DEBUG
-      Serial.println("Unrecognized light command!");
+      Serial.print(F("\nConnecting to MQTT broker..."));
 #endif
-      return;
+
+      while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD))
+      {
+        Serial.print(F("."));
+        delay(150);
+      }
+
+#ifdef DEBUG
+      Serial.println(F("\nConnected!"));
+#endif
+
+      mqttClient.subscribe(light_control_topic);
+      mqttClient.subscribe(ac_control_topic);
+#ifdef DEBUG
+      Serial.println("Subscribed to " + light_control_topic + "topic");
+      Serial.println("Subscribed to " + ac_control_topic + "topic");
+#endif
     }
   }
-  if (topic == ac_control_topic)
+
+  void mqttMessageReceived(String & topic, String & payload)
   {
-    StaticJsonDocument<256> doc;
-    deserializeJson(doc, payload);
-    ac_mode = doc["control"].as<String>();;
-    if (ac_mode == "on")
+// This function handles a message from the MQTT broker
+#ifdef DEBUG
+    Serial.println("Incoming MQTT message: " + topic + " - " + payload);
+#endif
+    if (topic == light_control_topic)
+    {
+
+      StaticJsonDocument<128> doc;
+      deserializeJson(doc, payload);
+      String light_control = doc["control"];
+
+      if (light_control == "on")
+      {
+        digitalWrite(LIGHT, HIGH);
+#ifdef DEBUG
+        Serial.println("Light on");
+#endif
+        return;
+      }
+      else if (light_control == "off")
+      {
+        digitalWrite(LIGHT, LOW);
+#ifdef DEBUG
+        Serial.println("Light off");
+#endif
+        return;
+      }
+      else
+      {
+#ifdef DEBUG
+        Serial.println("Unrecognized light command!");
+#endif
+        return;
+      }
+    }
+    if (topic == ac_control_topic)
+    {
+      StaticJsonDocument<256> doc;
+      deserializeJson(doc, payload);
+      ac_mode = doc["control"].as<String>();
+      ;
+      if (ac_mode == "on")
+      {
+        digitalWrite(AC_R, LOW);
+        digitalWrite(AC_G, HIGH);
+        digitalWrite(AC_B, LOW);
+#ifdef DEBUG
+        Serial.println("AC on");
+#endif
+        return;
+      }
+      else if (ac_mode == "off")
+      {
+        digitalWrite(AC_R, HIGH);
+        digitalWrite(AC_G, LOW);
+        digitalWrite(AC_B, LOW);
+#ifdef DEBUG
+        Serial.println("AC off");
+#endif
+        return;
+      }
+      else if (ac_mode == "auto")
+      {
+        ac_temp = doc["temp"];
+#ifdef DEBUG
+        Serial.println("AC auto");
+        Serial.printf("Actual temperature: %f \n", data_temperature);
+        Serial.printf("Desired temperature: %f \n", ac_temp);
+#endif
+        return;
+      }
+      else
+      {
+#ifdef DEBUG
+        Serial.println("Unrecognized AC command");
+#endif
+        return;
+      }
+    }
+    return;
+  }
+
+  String clearMacAddress(String mac_address)
+  {
+    // Prepare
+    String to_replace = String(':');
+    String replaced = "";
+    // Exec
+    mac_address.replace(to_replace, replaced);
+    // Return
+    return mac_address;
+  }
+
+  void sendMqttDouble(String attribute, double value)
+  {
+    // Send data to MQTT
+    DynamicJsonDocument doc(128);
+    doc["value"] = value;
+    char buffer[128];
+    size_t n = serializeJson(doc, buffer);
+    String topic = sensors_topic + clean_mac_address + "/" + attribute;
+    const char *topic_c = topic.c_str();
+    bool sent = false;
+    if (mqttClient.publish(topic_c, buffer, n, true, 1))
+      sent = true;
+#ifdef DEBUG
+    Serial.println(topic);
+    Serial.print(F("JSON message: "));
+    Serial.println(buffer);
+    if (sent)
+      Serial.println("Send OK");
+    else
+      Serial.println("Send NOT OK");
+#endif
+  }
+
+  void sendMqttLong(String attribute, long value)
+  {
+    // Send data to MQTT
+    DynamicJsonDocument doc(128);
+    doc["value"] = value;
+    char buffer[128];
+    size_t n = serializeJson(doc, buffer);
+    String topic = sensors_topic + clean_mac_address + "/" + attribute;
+    const char *topic_c = topic.c_str();
+    bool sent = false;
+    if (mqttClient.publish(topic_c, buffer, n, true, 1))
+      sent = true;
+#ifdef DEBUG
+    Serial.println(topic);
+    Serial.print(F("JSON message: "));
+    Serial.println(buffer);
+    if (sent)
+      Serial.println("Send OK");
+    else
+      Serial.println("Send NOT OK");
+#endif
+  }
+
+  void sendMqttBool(String attribute, bool value)
+  {
+    // Send data to MQTT
+    DynamicJsonDocument doc(128);
+    doc["value"] = value;
+    char buffer[128];
+    size_t n = serializeJson(doc, buffer);
+    String topic = sensors_topic + clean_mac_address + "/" + attribute;
+    const char *topic_c = topic.c_str();
+    bool sent = false;
+    if (mqttClient.publish(topic_c, buffer, n, true, 1))
+      sent = true;
+#ifdef DEBUG
+    Serial.println(topic);
+    Serial.print(F("JSON message: "));
+    Serial.println(buffer);
+    if (sent)
+      Serial.println("Send OK");
+    else
+      Serial.println("Send NOT OK");
+#endif
+  }
+
+  void acAutoControl()
+  {
+    if (data_temperature >= ac_temp)
     {
       digitalWrite(AC_R, LOW);
-      digitalWrite(AC_G, HIGH);
-      digitalWrite(AC_B, LOW);
+      digitalWrite(AC_G, LOW);
+      digitalWrite(AC_B, HIGH);
 #ifdef DEBUG
-      Serial.println("AC on");
+      Serial.println("High temp, turn AC on");
 #endif
-      return;
     }
-    else if (ac_mode == "off")
+    else
     {
       digitalWrite(AC_R, HIGH);
       digitalWrite(AC_G, LOW);
-      digitalWrite(AC_B, LOW);
+      digitalWrite(AC_B, HIGH);
 #ifdef DEBUG
-      Serial.println("AC off");
+      Serial.println("Low temp, turn AC off");
 #endif
-      return;
-    }
-    else if (ac_mode == "auto")
-    {
-      ac_temp = doc["temp"];
-#ifdef DEBUG
-      Serial.println("AC auto");
-      Serial.printf("Actual temperature: %f \n", data_temperature);
-      Serial.printf("Desired temperature: %f \n", ac_temp);
-#endif
-      return;
-    }
-    else
-    {
-#ifdef DEBUG
-      Serial.println("Unrecognized AC command");
-#endif
-      return;
     }
   }
-  return;
-}
-
-String clearMacAddress(String mac_address)
-{
-  // Prepare
-  String to_replace = String(':');
-  String replaced = "";
-  // Exec
-  mac_address.replace(to_replace, replaced);
-  // Return
-  return mac_address;
-}
-
-void sendMqttDouble(String attribute, double value)
-{
-  // Send data to MQTT
-  DynamicJsonDocument doc(128);
-  doc["value"] = value;
-  char buffer[128];
-  size_t n = serializeJson(doc, buffer);
-  String topic = sensors_topic + clean_mac_address + "/" + attribute;
-  const char *topic_c = topic.c_str();
-  bool sent = false;
-  if (mqttClient.publish(topic_c, buffer, n, true, 1))
-    sent = true;
-#ifdef DEBUG
-  Serial.println(topic);
-  Serial.print(F("JSON message: "));
-  Serial.println(buffer);
-  if (sent)
-    Serial.println("Send OK");
-  else
-    Serial.println("Send NOT OK");
-#endif
-}
-
-void sendMqttLong(String attribute, long value)
-{
-  // Send data to MQTT
-  DynamicJsonDocument doc(128);
-  doc["value"] = value;
-  char buffer[128];
-  size_t n = serializeJson(doc, buffer);
-  String topic = sensors_topic + clean_mac_address + "/" + attribute;
-  const char *topic_c = topic.c_str();
-  bool sent = false;
-  if (mqttClient.publish(topic_c, buffer, n, true, 1))
-    sent = true;
-#ifdef DEBUG
-  Serial.println(topic);
-  Serial.print(F("JSON message: "));
-  Serial.println(buffer);
-  if (sent)
-    Serial.println("Send OK");
-  else
-    Serial.println("Send NOT OK");
-#endif
-}
-
-void sendMqttBool(String attribute, bool value)
-{
-  // Send data to MQTT
-  DynamicJsonDocument doc(128);
-  doc["value"] = value;
-  char buffer[128];
-  size_t n = serializeJson(doc, buffer);
-  String topic = sensors_topic + clean_mac_address + "/" + attribute;
-  const char *topic_c = topic.c_str();
-  bool sent = false;
-  if (mqttClient.publish(topic_c, buffer, n, true, 1))
-    sent = true;
-#ifdef DEBUG
-  Serial.println(topic);
-  Serial.print(F("JSON message: "));
-  Serial.println(buffer);
-  if (sent)
-    Serial.println("Send OK");
-  else
-    Serial.println("Send NOT OK");
-#endif
-}
