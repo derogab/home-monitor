@@ -26,7 +26,7 @@
 #define FLAME_LOG_DELAY 30000
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
-#define DHT_TYPE DHT11   // Sensor type: DHT 11
+#define DHT_TYPE DHT11  // Sensor type: DHT 11
 #define DHT_DELAY 30000 // Needed delay for DHT sensors (Warning! Min = 2000)
 // Photoresistor
 #define PHOTORESISTOR A0            // photoresistor pin
@@ -73,6 +73,9 @@ WiFiClient networkClient;                // handles the network connection to th
 
 String clean_mac_address;
 String sensors_topic = "unishare/sensors/";
+String control_topic = "unishare/control/";
+String light_control_topic;
+String ac_control_topic;
 
 // Globals
 // --------------
@@ -122,13 +125,15 @@ void loop()
 {
   if (!sent_setup)
   {
-    connectToWiFi();       // connect to WiFi (if not already connected)
-    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
+    connectToWiFi(); // connect to WiFi (if not already connected)
     clean_mac_address = clearMacAddress(String(WiFi.macAddress()));
+    light_control_topic = control_topic + clean_mac_address + "/light";
+    ac_control_topic = control_topic + clean_mac_address + "/ac";
+    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
     DynamicJsonDocument doc(256);
     doc["mac_address"] = clean_mac_address;
-    doc["type"] = "screen";
-    doc["name"] = "schermo1";
+    doc["type"] = "sensors";
+    doc["name"] = "sensors1";
     char buffer[256];
     size_t n = serializeJson(doc, buffer);
 
@@ -382,6 +387,13 @@ void connectToMQTTBroker()
 #ifdef DEBUG
     Serial.println(F("\nConnected!"));
 #endif
+
+    mqttClient.subscribe(light_control_topic);
+    mqttClient.subscribe(ac_control_topic);
+#ifdef DEBUG
+    Serial.printf("Subscribed to %s topic! \n", light_control_topic);
+    Serial.printf("Subscribed to %s topic! \n", ac_control_topic);
+#endif
   }
 }
 
@@ -391,16 +403,72 @@ void mqttMessageReceived(String &topic, String &payload)
 #ifdef DEBUG
   Serial.println("Incoming MQTT message: " + topic + " - " + payload);
 #endif
-
-  if (topic == "example")
+  if (topic == light_control_topic)
   {
-    // deserialize the JSON object
-    // StaticJsonDocument<128> doc;
-    // deserializeJson(doc, payload);
-    // const char *desiredLedStatus = doc["status"];
 
-    Serial.println(F("Do something here."));
+    StaticJsonDocument<128> doc;
+    deserializeJson(doc, payload);
+    String light_control = doc["control"];
+
+    if (light_control == "on")
+    {
+// TODO accendi led
+#ifdef DEBUG
+      Serial.println("Light on");
+#endif
+      return;
+    }
+    else if (light_control == "off")
+    {
+      // TODO accendi led
+#ifdef DEBUG
+      Serial.println("Light off");
+#endif
+      return;
+    }
+    else
+    {
+#ifdef DEBUG
+      Serial.println("Unrecognized light command!");
+#endif
+      return;
+    }
   }
+  if (topic == ac_control_topic)
+  {
+    StaticJsonDocument<128> doc;
+    deserializeJson(doc, payload);
+    String ac_control = doc["control"];
+    if (ac_control == "on")
+    {
+#ifdef DEBUG
+      Serial.println("AC on");
+#endif
+      return;
+    }
+    else if (ac_control == "off")
+    {
+#ifdef DEBUG
+      Serial.println("AC off");
+#endif
+      return;
+    }
+    else if (ac_control == "auto")
+    {
+#ifdef DEBUG
+      Serial.println("AC auto");
+#endif
+      return;
+    }
+    else
+    {
+#ifdef DEBUG
+      Serial.println("Unrecognized AC command");
+#endif
+      return;
+    }
+  }
+  return;
 }
 
 String clearMacAddress(String mac_address)
