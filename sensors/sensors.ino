@@ -38,6 +38,13 @@
 
 #define MQTT_TOPIC_SETUP "unishare/devices/setup"
 
+// Actuators
+//-----
+#define LIGHT D5
+#define AC_R D6
+#define AC_G D7
+#define AC_B D8
+
 // Init
 // --------------
 // Initialize millis var
@@ -97,6 +104,18 @@ void setup()
   pinMode(LED1, OUTPUT); // Define LED 1 output pin
   pinMode(LED2, OUTPUT); // Define LED 2 output pin
   pinMode(FLAME, INPUT); // Define FLAME input pin
+
+  // Init actuators
+  pinMode(LIGHT, OUTPUT);
+  pinMode(AC_R, OUTPUT);
+  pinMode(AC_G, OUTPUT);
+  pinMode(AC_B, OUTPUT);
+
+  // Turn actuators off
+  digitalWrite(LIGHT, LOW);
+  digitalWrite(AC_R, LOW);
+  digitalWrite(AC_G, LOW);
+  digitalWrite(AC_B, LOW);
 
   // Turn LEDs OFF
   digitalWrite(LED1, HIGH);
@@ -412,7 +431,7 @@ void mqttMessageReceived(String &topic, String &payload)
 
     if (light_control == "on")
     {
-// TODO accendi led
+      digitalWrite(LIGHT, HIGH);
 #ifdef DEBUG
       Serial.println("Light on");
 #endif
@@ -420,7 +439,7 @@ void mqttMessageReceived(String &topic, String &payload)
     }
     else if (light_control == "off")
     {
-      // TODO accendi led
+      digitalWrite(LIGHT, LOW);
 #ifdef DEBUG
       Serial.println("Light off");
 #endif
@@ -441,6 +460,9 @@ void mqttMessageReceived(String &topic, String &payload)
     String ac_control = doc["control"];
     if (ac_control == "on")
     {
+      digitalWrite(AC_R, LOW);
+      digitalWrite(AC_G, HIGH);
+      digitalWrite(AC_B, LOW);
 #ifdef DEBUG
       Serial.println("AC on");
 #endif
@@ -448,6 +470,9 @@ void mqttMessageReceived(String &topic, String &payload)
     }
     else if (ac_control == "off")
     {
+      digitalWrite(AC_R, HIGH);
+      digitalWrite(AC_G, LOW);
+      digitalWrite(AC_B, LOW);
 #ifdef DEBUG
       Serial.println("AC off");
 #endif
@@ -455,8 +480,11 @@ void mqttMessageReceived(String &topic, String &payload)
     }
     else if (ac_control == "auto")
     {
+      digitalWrite(AC_R, LOW);
+      digitalWrite(AC_G, LOW);
+      digitalWrite(AC_B, HIGH);
 #ifdef DEBUG
-      Serial.println("AC auto");
+      Serial.println("AC a  uto");
 #endif
       return;
     }
