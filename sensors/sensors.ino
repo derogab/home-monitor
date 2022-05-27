@@ -89,6 +89,7 @@ String sensors_topic = "unishare/sensors/";
 String control_topic = "unishare/control/";
 String light_control_topic;
 String ac_control_topic;
+String mqtt_topic_status = "unishare/devices/status/";
 
 // Globals
 // --------------
@@ -141,6 +142,16 @@ void setup()
   // Start WiFi
   WiFi.mode(WIFI_STA);
 
+  clean_mac_address = clearMacAddress(String(WiFi.macAddress()));
+  mqtt_topic_status = mqtt_topic_status + clean_mac_address;
+
+  DynamicJsonDocument doc_will(128);
+  doc_will["connected"] = false;
+  char buffer_will[128];
+  serializeJson(doc_will, buffer_will);
+  const char *topic_status = mqtt_topic_status.c_str();
+  mqttClient.setWill(topic_status, buffer_will, true, 1);
+
 #ifdef DEBUG
   Serial.println("Setup completed!");
 #endif
@@ -155,7 +166,6 @@ void loop()
   if (!sent_setup)
   {
     connectToWiFi(); // connect to WiFi (if not already connected)
-    clean_mac_address = clearMacAddress(String(WiFi.macAddress()));
     light_control_topic = control_topic + clean_mac_address + "/light";
     ac_control_topic = control_topic + clean_mac_address + "/ac";
     connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
@@ -442,6 +452,13 @@ void connectToMQTTBroker()
     Serial.println("Subscribed to " + light_control_topic + "topic");
     Serial.println("Subscribed to " + ac_control_topic + "topic");
 #endif
+
+    DynamicJsonDocument doc_stat(128);
+    doc_stat["connected"] = true;
+    char buffer_stat[128];
+    size_t n = serializeJson(doc_stat, buffer_stat);
+    const char *topic_status = mqtt_topic_status.c_str();
+    mqttClient.publish(topic_status, buffer_stat, n, true, 1);
   }
 }
 
