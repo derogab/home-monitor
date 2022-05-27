@@ -36,7 +36,7 @@ def on_message(client, userdata, msg):
         if add_status == True:
             json_sensors = json_all_sensors()
             print(json_sensors)
-            client.publish("unishare/devices/all_sensors", payload=json_sensors, qos=2, retain=True)
+            client.publish("unishare/devices/all_sensors", payload=json_sensors, qos=1, retain=True)
         return
     if msg.topic.startswith('unishare/sensors'):
         split_topic = msg.topic.split("/")
@@ -55,7 +55,7 @@ def main():
     client.on_message = on_message
     client.connect(secrets.MQTT_BROKERIP, 1883, 60)
     json_sensors = json_all_sensors()
-    client.publish("unishare/devices/all_sensors", payload=json_sensors, qos=2, retain=True)
+    client.publish("unishare/devices/all_sensors", payload=json_sensors, qos=1, retain=True)
     client.loop_forever()
 
 if __name__ == "__main__":
