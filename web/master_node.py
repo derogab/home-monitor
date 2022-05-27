@@ -24,8 +24,8 @@ def json_all_sensors():
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
-    client.subscribe("unishare/devices/setup")
-    client.subscribe("unishare/devices/sensors/#")
+    client.subscribe("unishare/devices/setup", qos=1)
+    client.subscribe("unishare/devices/sensors/#", qos = 1)
 
 
 def on_message(client, userdata, msg):
