@@ -376,6 +376,8 @@ void connectToMQTTBroker()
     mqttClient.subscribe(MQTT_TOPIC_DEVICES, 1);
     String topic_sensors = String(MQTT_TOPIC_SENSORS) + "#";
     mqttClient.subscribe(topic_sensors, 1);
+    String topic_status_all = mqtt_topic_status + "#";
+    mqttClient.subscribe(topic_status_all);
 #ifdef DEBUG
     Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_DEVICES);
     Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_SENSORS);
@@ -444,7 +446,8 @@ void mqttMessageReceived(String &topic, String &payload)
     StaticJsonDocument<32> sensor_doc;
     deserializeJson(sensor_doc, payload);
     int index = 0;
-    for (int i = 0; i < 10; i++)
+    int i = 0;
+    for (i = 0; i < 10; i++)
     {
       if (all_sensors[i].mac == mac_to_find)
       {
@@ -452,6 +455,9 @@ void mqttMessageReceived(String &topic, String &payload)
         break;
       }
     }
+
+    if (i ==  10)
+      return;
 
     if (data_type == "humidity")
     {
@@ -492,7 +498,6 @@ void mqttMessageReceived(String &topic, String &payload)
       return;
     }
   }
-  return;
 
   if (topic.startsWith(mqtt_topic_status))
   {
@@ -503,7 +508,8 @@ void mqttMessageReceived(String &topic, String &payload)
     StaticJsonDocument<32> stat_doc;
     deserializeJson(stat_doc, payload);
     int index = 0;
-    for (int i = 0; i < 10; i++)
+    int i = 0;
+    for (i = 0; i < 10; i++)
     {
       if (all_sensors[i].mac == mac_to_find)
       {
@@ -511,9 +517,12 @@ void mqttMessageReceived(String &topic, String &payload)
         break;
       }
     }
-    all_sensors[index].status = stat_doc["connected"];
+    if (i==10)
+      return;
+    all_sensors[index].status = stat_doc["connected"].as<bool>();
     return;
   }
+  return;
 }
 
 String clearMacAddress(String mac_address)
