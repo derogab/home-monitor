@@ -76,3 +76,6 @@ def main():
     mqttClient.publish("unishare/devices/all_sensors",
                        payload=json_sensors, qos=1, retain=True)
     mqttClient.loop_forever()
+    
+if __name__ == "__main__":
+    main()
