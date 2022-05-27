@@ -10,4 +10,5 @@ typedef struct sensors
     long rssi;
     String mac;
     String name;
+    bool status;
 } sensors_t;

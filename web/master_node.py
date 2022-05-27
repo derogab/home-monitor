@@ -30,6 +30,7 @@ def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
     client.subscribe("unishare/devices/setup", qos=1)
     client.subscribe("unishare/sensors/#", qos=1)
+    client.subscribe("unishare/devices/status/#", qos=1)
 
 
 
@@ -64,6 +65,13 @@ def on_message(client, userdata, msg):
         print(mac)
         print(data_type)
         print(value)
+        return
+    if msg.topic.startswith('unishare/devices/status'):
+        split_topic = msg.topic.split("/")
+        mac = split_topic[-1]
+        data_json = json.loads(msg.payload.decode("utf-8"))
+        status = bool(data_json["connected"])
+        mysql_helper.update_device_status_db(mac, status)
         return
 
 def main():

@@ -30,6 +30,10 @@ WiFiClient networkClient;                // handles the network connection to th
 #define MQTT_TOPIC_SENSORS "unishare/sensors/"
 #define MQTT_TOPIC_SETUP "unishare/devices/setup"
 
+String mqtt_topic_status = "unishare/devices/status/";
+String mac_address;
+String mqtt_topic_my_status;
+
 // WiFi cfg
 char ssid[] = SECRET_SSID; // your network SSID (name)
 char pass[] = SECRET_PASS; // your network password
@@ -67,6 +71,7 @@ void IRAM_ATTR isrDec();
 void printDisplayInfo();
 void connectToMQTTBroker();
 void mqttMessageReceived(String &topic, String &payload);
+String clearMacAddress(String mac_address);
 
 void setup()
 {
@@ -122,6 +127,19 @@ void setup()
   // setup MQTT
   mqttClient.begin(MQTT_BROKERIP, 1883, networkClient); // setup communication with MQTT broker
   mqttClient.onMessage(mqttMessageReceived);            // callback on message received from MQTT broker
+
+  String to_replace = String(':');
+  String replaced = "";
+  mac_address = clearMacAddress(String(WiFi.macAddress()));
+  mqtt_topic_my_status = mqtt_topic_status + mac_address;
+  mac_address.replace(to_replace, replaced);
+
+  DynamicJsonDocument doc_will(128);
+  doc_will["connected"] = false;
+  char buffer_will[128];
+  serializeJson(doc_will, buffer_will);
+  const char *topic_status = mqtt_topic_my_status.c_str();
+  mqttClient.setWill(topic_status, buffer_will, true, 1);
 }
 
 bool sent_setup = false;
@@ -132,10 +150,6 @@ void loop()
     connectToWiFi();       // connect to WiFi (if not already connected)
     connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
     DynamicJsonDocument doc(256);
-    String to_replace = String(':');
-    String replaced = "";
-    String mac_address = String(WiFi.macAddress());
-    mac_address.replace(to_replace, replaced);
     doc["mac_address"] = mac_address;
     doc["type"] = "screen";
     doc["name"] = "schermo1";
@@ -148,7 +162,9 @@ void loop()
 #endif
 
     if (mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
+    {
       sent_setup = true;
+    }
   }
   else
   {
@@ -253,17 +269,16 @@ void IRAM_ATTR deviceDisplayInterrupt()
     device_index = device_index % number_of_devices;
     lcd.home();
     lcd.clear();
-    lcd.printf("Device:");
-    lcd.setCursor(0, 1);
     String mac_string = all_sensors[device_index].mac;
     char buffer[mac_string.length() + 1];
     mac_string.toCharArray(buffer, mac_string.length() + 1);
     lcd.printf("%s", buffer);
-    #ifdef DEBUG
+    lcd.setCursor(0, 1);
+    lcd.printf("Status %s", all_sensors[device_index].status ? "ON" : "OFF");
+#ifdef DEBUG
     Serial.print(F("Device to display: "));
     Serial.println(mac_string);
 #endif
-
   }
 }
 
@@ -361,10 +376,19 @@ void connectToMQTTBroker()
     mqttClient.subscribe(MQTT_TOPIC_DEVICES, 1);
     String topic_sensors = String(MQTT_TOPIC_SENSORS) + "#";
     mqttClient.subscribe(topic_sensors, 1);
+    String topic_status_all = mqtt_topic_status + "#";
+    mqttClient.subscribe(topic_status_all);
 #ifdef DEBUG
     Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_DEVICES);
     Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_SENSORS);
 #endif
+
+    DynamicJsonDocument doc_stat(128);
+    doc_stat["connected"] = true;
+    char buffer_stat[128];
+    size_t n = serializeJson(doc_stat, buffer_stat);
+    const char *topic_status = mqtt_topic_my_status.c_str();
+    mqttClient.publish(topic_status, buffer_stat, n, true, 1);
   }
 }
 
@@ -422,14 +446,18 @@ void mqttMessageReceived(String &topic, String &payload)
     StaticJsonDocument<32> sensor_doc;
     deserializeJson(sensor_doc, payload);
     int index = 0;
-    for (int i = 0; i < 10; i++)
+    int i = 0;
+    for (i = 0; i < 10; i++)
     {
       if (all_sensors[i].mac == mac_to_find)
-      { 
+      {
         index = i;
         break;
       }
     }
+
+    if (i ==  10)
+      return;
 
     if (data_type == "humidity")
     {
@@ -470,5 +498,40 @@ void mqttMessageReceived(String &topic, String &payload)
       return;
     }
   }
+
+  if (topic.startsWith(mqtt_topic_status))
+  {
+    int s_index = topic.lastIndexOf('/');
+    int length = topic.length();
+    String mac_to_find = topic.substring(s_index + 1, length);
+
+    StaticJsonDocument<32> stat_doc;
+    deserializeJson(stat_doc, payload);
+    int index = 0;
+    int i = 0;
+    for (i = 0; i < 10; i++)
+    {
+      if (all_sensors[i].mac == mac_to_find)
+      {
+        index = i;
+        break;
+      }
+    }
+    if (i==10)
+      return;
+    all_sensors[index].status = stat_doc["connected"].as<bool>();
+    return;
+  }
   return;
+}
+
+String clearMacAddress(String mac_address)
+{
+  // Prepare
+  String to_replace = String(':');
+  String replaced = "";
+  // Exec
+  mac_address.replace(to_replace, replaced);
+  // Return
+  return mac_address;
 }
