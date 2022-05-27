@@ -27,7 +27,7 @@
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
 #define DHT_TYPE DHT11  // Sensor type: DHT 11
-#define DHT_DELAY 600000 // Needed delay for DHT sensors (Warning! Min = 2000)
+#define DHT_DELAY 60000 // Needed delay for DHT sensors (Warning! Min = 2000)
 // Photoresistor
 #define PHOTORESISTOR A0            // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900 // turn led on for light values lesser than this
