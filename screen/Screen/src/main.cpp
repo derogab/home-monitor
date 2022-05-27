@@ -32,6 +32,7 @@ WiFiClient networkClient;                // handles the network connection to th
 
 String mqtt_topic_status = "unishare/devices/status/";
 String mac_address;
+String mqtt_topic_my_status;
 
 // WiFi cfg
 char ssid[] = SECRET_SSID; // your network SSID (name)
@@ -130,14 +131,14 @@ void setup()
   String to_replace = String(':');
   String replaced = "";
   mac_address = clearMacAddress(String(WiFi.macAddress()));
-  mqtt_topic_status = mqtt_topic_status + mac_address;
+  mqtt_topic_my_status = mqtt_topic_status + mac_address;
   mac_address.replace(to_replace, replaced);
 
   DynamicJsonDocument doc_will(128);
   doc_will["connected"] = false;
   char buffer_will[128];
   serializeJson(doc_will, buffer_will);
-  const char *topic_status = mqtt_topic_status.c_str();
+  const char *topic_status = mqtt_topic_my_status.c_str();
   mqttClient.setWill(topic_status, buffer_will, true, 1);
 }
 
@@ -268,12 +269,12 @@ void IRAM_ATTR deviceDisplayInterrupt()
     device_index = device_index % number_of_devices;
     lcd.home();
     lcd.clear();
-    lcd.printf("Device:");
-    lcd.setCursor(0, 1);
     String mac_string = all_sensors[device_index].mac;
     char buffer[mac_string.length() + 1];
     mac_string.toCharArray(buffer, mac_string.length() + 1);
     lcd.printf("%s", buffer);
+    lcd.setCursor(0, 1);
+    lcd.printf("Status %s", all_sensors[device_index].status ? "ON" : "OFF");
 #ifdef DEBUG
     Serial.print(F("Device to display: "));
     Serial.println(mac_string);
@@ -384,7 +385,7 @@ void connectToMQTTBroker()
     doc_stat["connected"] = true;
     char buffer_stat[128];
     size_t n = serializeJson(doc_stat, buffer_stat);
-    const char *topic_status = mqtt_topic_status.c_str();
+    const char *topic_status = mqtt_topic_my_status.c_str();
     mqttClient.publish(topic_status, buffer_stat, n, true, 1);
   }
 }
@@ -492,6 +493,27 @@ void mqttMessageReceived(String &topic, String &payload)
     }
   }
   return;
+
+  if (topic.startsWith(mqtt_topic_status))
+  {
+    int s_index = topic.lastIndexOf('/');
+    int length = topic.length();
+    String mac_to_find = topic.substring(s_index + 1, length);
+
+    StaticJsonDocument<32> stat_doc;
+    deserializeJson(stat_doc, payload);
+    int index = 0;
+    for (int i = 0; i < 10; i++)
+    {
+      if (all_sensors[i].mac == mac_to_find)
+      {
+        index = i;
+        break;
+      }
+    }
+    all_sensors[index].status = stat_doc["connected"];
+    return;
+  }
 }
 
 String clearMacAddress(String mac_address)
