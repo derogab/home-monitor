@@ -23,18 +23,18 @@
 #define LED2 D4
 // Flame Detector
 #define FLAME D1
-#define FLAME_LOG_DELAY 30000
+#define FLAME_LOG_DELAY 60000
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
 #define DHT_TYPE DHT11  // Sensor type: DHT 11
-#define DHT_DELAY 30000 // Needed delay for DHT sensors (Warning! Min = 2000)
+#define DHT_DELAY 600000 // Needed delay for DHT sensors (Warning! Min = 2000)
 // Photoresistor
 #define PHOTORESISTOR A0            // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900 // turn led on for light values lesser than this
-#define PHOTORESISTOR_LOG_DELAY 30000
+#define PHOTORESISTOR_LOG_DELAY 60000
 // WiFi signal
 #define RSSI_THRESHOLD -60 // WiFi signal strength threshold
-#define RSSI_LOG_DELAY 30000
+#define RSSI_LOG_DELAY 60000
 
 #define MQTT_TOPIC_SETUP "unishare/devices/setup"
 
@@ -44,6 +44,8 @@
 #define AC_R D6
 #define AC_G D7
 #define AC_B D8
+
+#define AC_CONTROL_DELAY 60000
 
 // Init
 // --------------
@@ -59,6 +61,10 @@ unsigned long lastLightLogTime = 0;
 unsigned long lastFlameLogTime = 0;
 // Initialize rssi log time
 unsigned long lastRssiLog = 0;
+// Initialize ac control time
+unsigned long lastAcControl = 0;
+bool temp_read = false;
+
 // Initialize DHT sensor
 DHT dht = DHT(DHT_PIN, DHT_TYPE);
 
@@ -96,9 +102,9 @@ double data_humidity;
 // actuators values;
 double ac_temp;
 String ac_mode;
+String ac_previous_state;
 
 // CODE
-
 void setup()
 {
   // Sync Serial logs
@@ -272,6 +278,7 @@ void loop()
     // TEMPERATURE & HUMIDITY DETECTION
     // -------------------------------
     currentTime = millis();
+    temp_read = false;
     // Check if frequency is good :)
     if (currentTime - lastTempTime > DHT_DELAY)
     {
@@ -289,6 +296,7 @@ void loop()
         return;
       }
 
+      temp_read = true;
       // compute heat index in Celsius (isFahreheit = false)
       double hic = dht.computeHeatIndex(t, h, false);
 
@@ -305,30 +313,30 @@ void loop()
       Serial.print(hic);
       Serial.println(F("°C"));
 #endif
-      if (data_temperature >= ac_temp)
-      {
-        digitalWrite(AC_R, LOW);
-        digitalWrite(AC_G, LOW);
-        digitalWrite(AC_B, HIGH);
-#ifdef DEBUG
-        Serial.println("High temp, turn AC on");
-#endif
-      }
-      else
-      {
-        digitalWrite(AC_R, HIGH);
-        digitalWrite(AC_G, LOW);
-        digitalWrite(AC_B, HIGH);
-#ifdef DEBUG
-        Serial.println("Low temp, turn AC off");
-#endif
-      }
+
       attribute = "humidity";
       sendMqttDouble(attribute, data_humidity);
       attribute = "temperature";
       sendMqttDouble(attribute, data_temperature);
       attribute = "apparent_temperature";
       sendMqttDouble(attribute, data_apparent_temperature);
+    }
+
+    // automatic AC control
+    if (ac_mode == "auto" && (currentTime - lastAcControl > AC_CONTROL_DELAY))
+    {
+      if (!temp_read)
+      {
+        double t = dht.readTemperature(); // temperature Celsius, range 0-50°C (±2°C accuracy)
+
+        if (isnan(t))
+        { // readings failed, skip
+          Serial.println(F("Failed to read from DHT sensor!"));
+          return;
+        }
+        data_temperature = t;
+      }
+      acAutoControl();
     }
   }
 }
@@ -478,7 +486,8 @@ void mqttMessageReceived(String &topic, String &payload)
   {
     StaticJsonDocument<256> doc;
     deserializeJson(doc, payload);
-    ac_mode = doc["control"].as<String>();;
+    ac_mode = doc["control"].as<String>();
+    ;
     if (ac_mode == "on")
     {
       digitalWrite(AC_R, LOW);
@@ -598,4 +607,41 @@ void sendMqttBool(String attribute, bool value)
   else
     Serial.println("Send NOT OK");
 #endif
+}
+
+void acAutoControl()
+{
+  String ac_current_state;
+  if (data_temperature >= ac_temp)
+  {
+    ac_current_state = "on";
+  }
+  else
+  {
+    ac_current_state = "off";
+  }
+
+  if (ac_current_state != ac_previous_state)
+  {
+    ac_previous_state = ac_current_state;
+
+    if (ac_current_state == "on")
+    {
+      digitalWrite(AC_R, LOW);
+      digitalWrite(AC_G, LOW);
+      digitalWrite(AC_B, HIGH);
+#ifdef DEBUG
+      Serial.println("High temp, turn AC on");
+#endif
+    }
+    else
+    {
+      digitalWrite(AC_R, HIGH);
+      digitalWrite(AC_G, LOW);
+      digitalWrite(AC_B, HIGH);
+#ifdef DEBUG
+      Serial.println("Low temp, turn AC off");
+#endif
+    }
+  }
 }
