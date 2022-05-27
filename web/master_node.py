@@ -28,8 +28,8 @@ def json_all_sensors():
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
-    client.subscribe("unishare/devices/setup")
-    client.subscribe("unishare/sensors/#")
+    client.subscribe("unishare/devices/setup", qos=1)
+    client.subscribe("unishare/sensors/#", qos=1)
 
 
 def on_message(client, userdata, msg):
@@ -43,7 +43,7 @@ def on_message(client, userdata, msg):
             json_sensors = json_all_sensors()
             print(json_sensors)
             client.publish("unishare/devices/all_sensors",
-                           payload=json_sensors, qos=2, retain=True)
+                           payload=json_sensors, qos=1, retain=True)
         return
     if msg.topic.startswith('unishare/sensors'):
         split_topic = msg.topic.split("/")
@@ -73,7 +73,7 @@ def main():
     mqttClient.connect(secrets.MQTT_BROKERIP, 1883, 60)
     json_sensors = json_all_sensors()
     mqttClient.publish("unishare/devices/all_sensors",
-                       payload=json_sensors, qos=2, retain=True)
+                       payload=json_sensors, qos=1, retain=True)
     mqttClient.loop_forever()
 
 
