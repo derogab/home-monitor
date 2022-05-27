@@ -62,7 +62,7 @@ def add_device_to_db(mac_address, name, dev_type):
     else:
         print("Adding device ", mac_address, " with name ", name, " type ", dev_type)      
         with conn.cursor() as cursor:
-            sql = "INSERT INTO `home-monitor-devices` VALUES(%s, %s, %s)"
+            sql = "INSERT INTO `home-monitor-devices` VALUES(%s, %s, %s, TRUE)"
             cursor.execute(sql, (mac_address, name, dev_type,))
             conn.commit()
             return True
