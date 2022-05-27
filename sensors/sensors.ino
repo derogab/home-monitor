@@ -428,8 +428,8 @@ void connectToMQTTBroker()
     Serial.println(F("\nConnected!"));
 #endif
 
-    mqttClient.subscribe(light_control_topic);
-    mqttClient.subscribe(ac_control_topic);
+    mqttClient.subscribe(light_control_topic, 1);
+    mqttClient.subscribe(ac_control_topic, 1);
 #ifdef DEBUG
     Serial.println("Subscribed to " + light_control_topic + "topic");
     Serial.println("Subscribed to " + ac_control_topic + "topic");

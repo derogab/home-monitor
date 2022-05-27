@@ -358,9 +358,9 @@ void connectToMQTTBroker()
 #endif
 
     // connected to broker, subscribe topics
-    mqttClient.subscribe(MQTT_TOPIC_DEVICES);
+    mqttClient.subscribe(MQTT_TOPIC_DEVICES, 1);
     String topic_sensors = String(MQTT_TOPIC_SENSORS) + "#";
-    mqttClient.subscribe(topic_sensors);
+    mqttClient.subscribe(topic_sensors, 1);
 #ifdef DEBUG
     Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_DEVICES);
     Serial.printf("Subscribed to %s topic! \n", MQTT_TOPIC_SENSORS);
