@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 
-const CardStats = ({
+const CardControl = ({
   statId,
   statTitle,
-  statData,
   statIconName,
   statIconColor,
 }) => {
@@ -13,7 +12,7 @@ const CardStats = ({
   // Print data
   return (
     <>
-      <div id={statId} className="relative flex flex-col min-w-0 break-words bg-white rounded mb-6 xl:mb-0 shadow-lg" onClick={() => setValue(!value)}>
+      <div id={statId} className="relative flex flex-col min-w-0 break-words bg-white rounded mb-6 xl:mb-0 shadow-lg pointer" onClick={() => setValue(!value)}>
         <div className="flex-auto p-4">
           <div className="flex flex-wrap">
             <div className="relative w-full pr-4 max-w-full flex-grow flex-1">
@@ -21,7 +20,7 @@ const CardStats = ({
                 {statTitle}
               </h5>
               <span className="font-semibold text-xl text-blueGray-700">
-                {statData}
+                {value ? "YES": "NO"}
               </span>
             </div>
             <div className="relative w-auto pl-4 flex-initial">
@@ -41,16 +40,14 @@ const CardStats = ({
   );
 };
 
-CardStats.defaultProps = {
+CardControl.defaultProps = {
   statTitle: "Example",
-  statData: "1234",
   statIconName: "far fa-chart-bar",
   statIconColor: "bg-red-500",
 };
 
-CardStats.propTypes = {
+CardControl.propTypes = {
   statTitle: PropTypes.string,
-  statData: PropTypes.string,
   // can be any of the text color utilities
   // from tailwindcss
   statIconName: PropTypes.string,
@@ -59,4 +56,4 @@ CardStats.propTypes = {
   statIconColor: PropTypes.string,
 };
 
-export default CardStats;
+export default CardControl;
