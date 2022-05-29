@@ -2,11 +2,15 @@
 const Logger = require("@ptkdev/logger");
 // Import Express
 const express = require('express');
+const cors = require('cors');
 const app = express();
 // Import MQTT
 const mqtt = require('mqtt');
 // Import MySQL
 const mysql = require('mysql');
+
+// Init CORS
+app.use(cors({ origin: '*' }));
 
 // Init ENVs
 require('dotenv').config();
@@ -90,6 +94,8 @@ app.get('/sensors', async function (req, res) {
                 // Response
                 res.status(500).json({ sensors: [], success: false });
             }
+            // Log
+            logger.debug((results ? results.length : 0) + ' sensor(s) found!');
             // Return data
             res.status(200).json({ sensors: results, success: true });
         });
