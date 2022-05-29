@@ -19,10 +19,16 @@ const CardControl = ({
         // Set status
         const status = (!value) ? 'on' : 'off';
         // Send local request to API
-        const resss = await fetch('http://localhost:3001/control/1234/light/' + status);
+        const resss = await fetch('http://localhost:3001/control/1234/light/' + status, {
+          method: 'GET',
+          mode: 'no-cors',
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
         // Logs to console
         console.log('CardControl / Set: ' + status.toUpperCase());
-        console.log('CardControl / Response: ' + resss);
+        console.log('CardControl / Response: ',  resss);
         // Change value
         setValue(!value);
         
