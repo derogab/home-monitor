@@ -10,10 +10,16 @@ require('dotenv').config();
 // Get configs
 const host = process.env.HOST;
 const port = process.env.PORT;
-const user = process.env.USER;
-const pass = process.env.PASS;
+const user = process.env.USERNAME;
+const pass = process.env.PASSWORD;
+
+// Starting 
+console.log('Starting server...');
 
 // Init MQTT client
+// Try to connect to MQTT broker
+console.log('Connecting to MQTT broker...');
+console.log('MQTT broker: ' + host + ':' + port);
 const mqttClient = mqtt.connect('mqtt://' + host + ':' + port, {
     protocol: 'mqtt',
     clientId: 'api',
