@@ -21,9 +21,9 @@ const CardControl = ({
         // Send local request to API
         const resss = await fetch('http://localhost:3001/control/1234/light/' + status, {
           method: 'GET',
-          mode: 'no-cors',
           headers: {
             "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
           },
         });
         // Logs to console

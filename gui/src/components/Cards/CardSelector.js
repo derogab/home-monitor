@@ -2,20 +2,49 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import AsyncSelect from 'react-select/async';
 
-const getDevices = () => {
-  return [
-    { value: 'chocolate', label: 'Chocolate' },
-    { value: 'strawberry', label: 'Strawberry' },
-    { value: 'vanilla', label: 'Vanilla' }
-  ];
-};
 
 const promiseOptions = () =>
   new Promise((resolve) => {
-    setTimeout(() => {
-      console.log("promiseOptions...");
-      resolve(getDevices());
-    }, 1000);
+
+    fetch('http://localhost:3001/sensors', {
+      method: 'GET',
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*", 
+        
+      },
+    })
+    .then((response) => {
+      // Empty array if no data
+      if (!response.ok) return [];
+      // Parse data
+      return response.json();
+    })
+    .then((data) => {
+      // Check if there are data
+      if (!data) return [];
+      // Get sensors
+      const sensors = data.sensors || [];
+      // Check if there are sensors
+      if (!sensors) return [];
+      // Fix data
+      let selectable = [];
+      for (let i = 0; i < data.sensors.length; i++) {
+        const sensor = data.sensors[i];
+        // Append to selectable
+        selectable.push({
+          value: sensor.mac,
+          label: sensor.name + ' (' + sensor.mac + ')',
+        });
+      }
+      console.log('Selectable: ', selectable);
+      // Resolve promise
+      resolve(selectable);
+    })
+    .catch(function (err) {
+      console.log("Unable to fetch - ", err);
+    });
+
 });
 
 const CardSelector = ({
