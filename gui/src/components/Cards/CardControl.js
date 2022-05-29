@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 
+// CardControl
 const CardControl = ({
   statId,
   statTitle,
@@ -8,11 +9,24 @@ const CardControl = ({
   statIconColor,
 }) => {
   // Init stateful
-  const [value, setValue] = useState(1);
+  const [value, setValue] = useState(false);
+
   // Print data
   return (
     <>
-      <div id={statId} className="relative flex flex-col min-w-0 break-words bg-white rounded mb-6 xl:mb-0 shadow-lg pointer" onClick={() => setValue(!value)}>
+      <div id={statId} className="relative flex flex-col min-w-0 break-words bg-white rounded mb-6 xl:mb-0 shadow-lg pointer" onClick={async () => {
+        
+        // Set status
+        const status = (!value) ? 'on' : 'off';
+        // Send local request to API
+        const resss = await fetch('http://localhost:3000/control/1234/light/' + status);
+        // Logs to console
+        console.log('CardControl / Set: ' + status.toUpperCase());
+        console.log('CardControl / Response: ' + resss);
+        // Change value
+        setValue(!value);
+        
+      }}>
         <div className="flex-auto p-4">
           <div className="flex flex-wrap">
             <div className="relative w-full pr-4 max-w-full flex-grow flex-1">
