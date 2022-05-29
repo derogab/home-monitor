@@ -1,6 +1,22 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
-import Select from 'react-select';
+import AsyncSelect from 'react-select/async';
+
+const getDevices = () => {
+  return [
+    { value: 'chocolate', label: 'Chocolate' },
+    { value: 'strawberry', label: 'Strawberry' },
+    { value: 'vanilla', label: 'Vanilla' }
+  ];
+};
+
+const promiseOptions = () =>
+  new Promise((resolve) => {
+    setTimeout(() => {
+      console.log("promiseOptions...");
+      resolve(getDevices());
+    }, 1000);
+});
 
 const CardSelector = ({
   statId,
@@ -8,14 +24,6 @@ const CardSelector = ({
 }) => {
   // Init stateful
   const [value, setValue] = useState(1);
-
-
-  const options = [
-    { value: 'chocolate', label: 'Chocolate' },
-    { value: 'strawberry', label: 'Strawberry' },
-    { value: 'vanilla', label: 'Vanilla' }
-  ]
-
 
   // Print data
   return (
@@ -28,7 +36,7 @@ const CardSelector = ({
                 {statTitle}
               </h5>
               <span className="font-semibold text-xl text-blueGray-700">
-                <Select options={options} />
+                <AsyncSelect cacheOptions defaultOptions loadOptions={promiseOptions} />
               </span>
             </div>
           </div>
