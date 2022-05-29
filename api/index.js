@@ -68,4 +68,4 @@ app.get('/control/:mac/light/off', function (req, res) {
 });
 
 // Listen
-app.listen(3000);
+app.listen(3001);
