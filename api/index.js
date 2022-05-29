@@ -72,7 +72,7 @@ mysqlClient.connect(function(err) {
 
 // Root
 app.get('/', function (req, res) {
-    res.send('Status: UP!');
+    res.status(200).send('Status: UP!');
 });
 
 // Sensors
@@ -91,11 +91,11 @@ app.get('/sensors', async function (req, res) {
                 res.status(500).json({ sensors: [], success: false });
             }
             // Return data
-            res.json({ sensors: results, success: true });
+            res.status(200).json({ sensors: results, success: true });
         });
     } else {
         // Send response
-        res.json({ sensors: [], success: false });
+        res.status(500).json({ sensors: [], success: false });
         // Log
         logger.error('Failed to get the sensors list.');
     }
@@ -110,12 +110,12 @@ app.get('/control/:mac/light/on', function (req, res) {
         // Send MQTT message
         mqttClient.publish('unishare/control/' + req.params.mac + '/light', '{value: true}');
         // Send response
-        res.json({ status: 'ON', success: true });
+        res.status(200).json({ status: 'ON', success: true });
         // Log
         logger.info('Light of ' + req.params.mac + ' turned ON.');
     } else {
         // Send response
-        res.json({ status: 'ON', success: false });
+        res.status(500).json({ status: 'ON', success: false });
         // Log
         logger.warning('Light of ' + req.params.mac + ' not turned ON.');
     }
@@ -130,12 +130,12 @@ app.get('/control/:mac/light/off', function (req, res) {
         // Send MQTT message
         mqttClient.publish('unishare/control/' + req.params.mac + '/light', '{value: false}');
         // Send response
-        res.json({ status: 'OFF', success: true });
+        res.status(200).json({ status: 'OFF', success: true });
         // Log
         logger.info('Light of ' + req.params.mac + ' turned OFF.');
     } else {
         // Send response
-        res.json({ status: 'OFF', success: false });
+        res.status(500).json({ status: 'OFF', success: false });
         // Log
         logger.warning('Light of ' + req.params.mac + ' not turned OFF.');
     }
