@@ -1,15 +1,22 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+import Select from 'react-select';
 
-const CardStats = ({
+const CardSelector = ({
   statId,
   statTitle,
-  statData,
-  statIconName,
-  statIconColor,
 }) => {
   // Init stateful
   const [value, setValue] = useState(1);
+
+
+  const options = [
+    { value: 'chocolate', label: 'Chocolate' },
+    { value: 'strawberry', label: 'Strawberry' },
+    { value: 'vanilla', label: 'Vanilla' }
+  ]
+
+
   // Print data
   return (
     <>
@@ -21,18 +28,8 @@ const CardStats = ({
                 {statTitle}
               </h5>
               <span className="font-semibold text-xl text-blueGray-700">
-                {statData}
+                <Select options={options} />
               </span>
-            </div>
-            <div className="relative w-auto pl-4 flex-initial">
-              <div
-                className={
-                  "text-white p-3 text-center inline-flex items-center justify-center w-12 h-12 shadow-lg rounded-full " +
-                  statIconColor
-                }
-              >
-                <i className={statIconName}></i>
-              </div>
             </div>
           </div>
         </div>
@@ -41,16 +38,14 @@ const CardStats = ({
   );
 };
 
-CardStats.defaultProps = {
+CardSelector.defaultProps = {
   statTitle: "Example",
-  statData: "1234",
   statIconName: "far fa-chart-bar",
   statIconColor: "bg-red-500",
 };
 
-CardStats.propTypes = {
+CardSelector.propTypes = {
   statTitle: PropTypes.string,
-  statData: PropTypes.string,
   // can be any of the text color utilities
   // from tailwindcss
   statIconName: PropTypes.string,
@@ -59,4 +54,4 @@ CardStats.propTypes = {
   statIconColor: PropTypes.string,
 };
 
-export default CardStats;
+export default CardSelector;

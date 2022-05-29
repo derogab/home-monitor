@@ -4,6 +4,7 @@ import React from "react";
 
 import CardStats from "components/Cards/CardStats.js";
 import CardControl from "components/Cards/CardControl.js";
+import CardSelector from "components/Cards/CardSelector.js";
 
 export default function HeaderStats() {
   return (
@@ -41,11 +42,9 @@ export default function HeaderStats() {
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
-                <CardControl
-                  statId="other"
-                  statTitle="Other Command"
-                  statIconName="fas fa-microchip"
-                  statIconColor="bg-orange-500"
+                <CardSelector
+                  statId="device"
+                  statTitle="Device"
                 />
               </div>
             </div>

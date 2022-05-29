@@ -1,3 +1,7 @@
 .pointer {
     cursor: pointer;
 }
+
+.fixed-min-height {
+    min-height: 100px;
+}

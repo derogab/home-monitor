@@ -14,7 +14,7 @@ const CardControl = ({
   // Print data
   return (
     <>
-      <div id={statId} className="relative flex flex-col min-w-0 break-words bg-white rounded mb-6 xl:mb-0 shadow-lg pointer" onClick={async () => {
+      <div id={statId} className="relative flex flex-col min-w-0 break-words bg-white rounded mb-6 xl:mb-0 shadow-lg pointer fixed-min-height" onClick={async () => {
         
         // Set status
         const status = (!value) ? 'on' : 'off';
