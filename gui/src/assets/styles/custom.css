@@ -9,3 +9,7 @@
 .display-none {
     display: none;
 }
+
+.device-selector {
+    font-size: 14px;
+}

@@ -38,7 +38,7 @@ export default function HeaderStats() {
                 <CardControl
                   statId="light"
                   statTitle="Air Conditioning"
-                  statIconName="fal fa-heat"
+                  statIconName="fal fa-wind"
                   statIconColor="bg-lightBlue-500"
                 />
               </div>

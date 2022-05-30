@@ -75,7 +75,7 @@ const CardSelector = ({
                 {statTitle}
               </h5>
               <span className="font-semibold text-xl text-blueGray-700">
-                <AsyncSelect cacheOptions defaultOptions loadOptions={promiseOptions} onChange={onChangeSelectedOption} />
+                <AsyncSelect cacheOptions defaultOptions loadOptions={promiseOptions} onChange={onChangeSelectedOption} className="device-selector" />
               </span>
             </div>
           </div>

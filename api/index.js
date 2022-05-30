@@ -29,6 +29,10 @@ const mysql_user = process.env.MYSQL_USERNAME;
 const mysql_pass = process.env.MYSQL_PASSWORD;
 const mysql_database = process.env.MYSQL_DATABASE;
 
+// Global variables
+let mqtt_data_fire = false;
+let mqtt_data_light = false;
+
 // Starting 
 logger.info('Starting API...');
 
@@ -51,6 +55,36 @@ const mqttClient = mqtt.connect('mqtt://' + mqtt_host + ':' + mqtt_port, {
 mqttClient.on('connect', function () {
     // Connected to MQTT broker
     logger.info('Connected to MQTT broker.');
+    // Subscribe to MQTT topics
+    mqttClient.subscribe('unishare/control/light', function (err) {
+        if (!err) logger.info('Subscribed to topic LIGHT.');
+    });
+    mqttClient.subscribe('unishare/control/fire', function (err) {
+        if (!err) logger.info('Subscribed to topic FIRE.');
+    });
+});
+
+// MQTT message handler
+mqttClient.on('message', function (topic, message) {
+    // Get message
+    const msg = message.toString();
+    // Get JSON data
+    const data = JSON.parse(msg);
+    // Log message
+    logging.debug('MQTT message: ' + message.toString());
+    // Check topic
+    if (topic.includes('fire')) {
+        // Get fire data
+        const fire = data.value || false;
+        // Set fire data
+        mqtt_data_fire = fire;
+    }
+    else if (topic.includes('light')) {
+        // Get light data
+        const light = data.value || false;
+        // Set light data
+        mqtt_data_light = light;
+    }
 });
 
 // Init MYSQL client 
@@ -77,6 +111,22 @@ mysqlClient.connect(function(err) {
 // Root
 app.get('/', function (req, res) {
     res.status(200).send('Status: UP!');
+});
+
+// Fire
+app.get('/fire', function (req, res) {
+    res.status(200).json({
+        success: true,
+        value: mqtt_data_fire || false,
+    });
+});
+
+// Light
+app.get('/light', function (req, res) {
+    res.status(200).json({
+        success: true,
+        value: mqtt_data_light || false,
+    });
 });
 
 // Sensors
