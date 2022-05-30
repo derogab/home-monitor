@@ -11,7 +11,7 @@ const CardStats = ({
   
   // Update data
   useEffect(() => {
-    setTimeout(() => {
+    setInterval(() => {
       
       fetch('http://localhost:3001/' + statId, {
         method: 'GET',
@@ -27,20 +27,19 @@ const CardStats = ({
         return response.json();
       })
       .then((data) => {
+        console.log(data);
         // Check if there are data
         if (!data) return;
-        // Get value
-        const value = data.value || [];
         // Update state
-        setStatDataValue(value);
+        setStatDataValue(data.value);
         // Log
-        console.log('Update value of ' + statId + ': ' + value);
+        console.log('Update value of ' + statId + ': ' + (data.value ? "YES" : "NO"));
       })
       .catch(function (err) {
         console.log("Unable to fetch - ", err);
       });
 
-    }, 5000);
+    }, 2500);
   }, [statId]);
 
   // Print data
