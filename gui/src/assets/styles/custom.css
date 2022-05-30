@@ -1,0 +1,19 @@
+.pointer {
+    cursor: pointer;
+}
+
+.fixed-min-height {
+    min-height: 100px;
+}
+
+.display-none {
+    display: none;
+}
+
+.device-selector {
+    font-size: 14px;
+}
+
+.space {
+    height: 30px;
+}

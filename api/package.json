@@ -1,0 +1,19 @@
+{
+  "name": "home-monitor-api",
+  "version": "1.0.0",
+  "description": "An API interface to command MQTT and retrieve data",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ptkdev/logger": "^1.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1",
+    "mqtt": "^4.3.7",
+    "mysql": "^2.18.1"
+  }
+}
