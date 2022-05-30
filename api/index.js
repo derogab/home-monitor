@@ -59,7 +59,7 @@ mqttClient.on('connect', function () {
     mqttClient.subscribe('unishare/sensors/807D3A42D1C5/light', function (err) {
         if (!err) logger.info('Subscribed to topic LIGHT.');
     });
-    mqttClient.subscribe('unishare/sensors/807D3A42D1C5/fire', function (err) {
+    mqttClient.subscribe('unishare/sensors/807D3A42D1C5/flame', function (err) {
         if (!err) logger.info('Subscribed to topic FIRE.');
     });
 });
@@ -73,7 +73,7 @@ mqttClient.on('message', function (topic, message) {
     // Log message
     logger.debug('MQTT message: ' + message.toString());
     // Check topic
-    if (topic.includes('fire')) {
+    if (topic.includes('flame')) {
         // Get fire data
         const fire = data.value || false;
         // Set fire data
@@ -163,7 +163,7 @@ app.get('/control/:mac/light/on', function (req, res) {
     // Check it client is set
     if (mqttClient) {
         // Send MQTT message
-        mqttClient.publish('unishare/control/' + req.params.mac + '/light', '{value: true}');
+        mqttClient.publish('unishare/control/' + req.params.mac + '/light', '{"control": "on"}');
         // Send response
         res.status(200).json({ status: 'ON', success: true });
         // Log
@@ -183,7 +183,7 @@ app.get('/control/:mac/light/off', function (req, res) {
     // Check it client is set
     if (mqttClient) {
         // Send MQTT message
-        mqttClient.publish('unishare/control/' + req.params.mac + '/light', '{value: false}');
+        mqttClient.publish('unishare/control/' + req.params.mac + '/light', '{"control": "off"}');
         // Send response
         res.status(200).json({ status: 'OFF', success: true });
         // Log
