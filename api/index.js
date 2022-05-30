@@ -156,7 +156,8 @@ app.get('/sensors', async function (req, res) {
     }
 });
 
-// Control ON
+// Control LIGHT
+// LIGHT: ON
 app.get('/control/:mac/light/on', function (req, res) {
     // Logs
     logger.debug('Turning ON light of ' + req.params.mac + '...');
@@ -175,8 +176,7 @@ app.get('/control/:mac/light/on', function (req, res) {
         logger.warning('Light of ' + req.params.mac + ' not turned ON.');
     }
 });
-
-// Control OFF
+// LIGHT: OFF
 app.get('/control/:mac/light/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF light of ' + req.params.mac + '...');
@@ -193,6 +193,46 @@ app.get('/control/:mac/light/off', function (req, res) {
         res.status(500).json({ status: 'OFF', success: false });
         // Log
         logger.warning('Light of ' + req.params.mac + ' not turned OFF.');
+    }
+});
+
+// Control AIR
+// AIR: ON
+app.get('/control/:mac/air/on', function (req, res) {
+    // Logs
+    logger.debug('Turning ON air of ' + req.params.mac + '...');
+    // Check it client is set
+    if (mqttClient) {
+        // Send MQTT message
+        mqttClient.publish('unishare/control/' + req.params.mac + '/ac', '{"control": "on"}');
+        // Send response
+        res.status(200).json({ status: 'ON', success: true });
+        // Log
+        logger.info('Air of ' + req.params.mac + ' turned ON.');
+    } else {
+        // Send response
+        res.status(500).json({ status: 'ON', success: false });
+        // Log
+        logger.warning('Air of ' + req.params.mac + ' not turned ON.');
+    }
+});
+// AIR: OFF
+app.get('/control/:mac/air/off', function (req, res) {
+    // Logs
+    logger.debug('Turning OFF air of ' + req.params.mac + '...');
+    // Check it client is set
+    if (mqttClient) {
+        // Send MQTT message
+        mqttClient.publish('unishare/control/' + req.params.mac + '/ac', '{"control": "off"}');
+        // Send response
+        res.status(200).json({ status: 'OFF', success: true });
+        // Log
+        logger.info('Air of ' + req.params.mac + ' turned OFF.');
+    } else {
+        // Send response
+        res.status(500).json({ status: 'OFF', success: false });
+        // Log
+        logger.warning('Air of ' + req.params.mac + ' not turned OFF.');
     }
 });
 
