@@ -54,7 +54,7 @@ const PagesDropdown = () => {
         <Link
           to="/settings"
           className={
-            "text-sm py-2 px-4 font-normal block w-full whitespace-nowrap bg-transparent text-blueGray-700"
+            "display-none text-sm py-2 px-4 font-normal block w-full whitespace-nowrap bg-transparent text-blueGray-700"
           }
         >
           Settings
@@ -62,7 +62,7 @@ const PagesDropdown = () => {
         <Link
           to="/tables"
           className={
-            "text-sm py-2 px-4 font-normal block w-full whitespace-nowrap bg-transparent text-blueGray-700"
+            "display-none text-sm py-2 px-4 font-normal block w-full whitespace-nowrap bg-transparent text-blueGray-700"
           }
         >
           Tables
@@ -70,7 +70,7 @@ const PagesDropdown = () => {
         <Link
           to="/maps"
           className={
-            "text-sm py-2 px-4 font-normal block w-full whitespace-nowrap bg-transparent text-blueGray-700"
+            "display-none text-sm py-2 px-4 font-normal block w-full whitespace-nowrap bg-transparent text-blueGray-700"
           }
         >
           Maps

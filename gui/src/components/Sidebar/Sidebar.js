@@ -85,7 +85,7 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
+                    "display-none text-xs uppercase py-3 font-bold block " +
                     (window.location.href.indexOf("/settings") !== -1
                       ? "text-lightBlue-500 hover:text-lightBlue-600"
                       : "text-blueGray-700 hover:text-blueGray-500")
@@ -107,7 +107,7 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
+                    "display-none text-xs uppercase py-3 font-bold block " +
                     (window.location.href.indexOf("/tables") !== -1
                       ? "text-lightBlue-500 hover:text-lightBlue-600"
                       : "text-blueGray-700 hover:text-blueGray-500")

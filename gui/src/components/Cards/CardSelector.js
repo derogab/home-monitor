@@ -54,6 +54,16 @@ const CardSelector = ({
   // Init stateful
   const [value, setValue] = useState(1);
 
+  // On change function
+  const onChangeSelectedOption = (e) => {
+    // Return, if no value
+    if (!e) return;
+    // Get value
+    const selectedOption = e.value; 
+    // Log
+    console.log('CardSelector / Selected: ', selectedOption);
+  };
+
   // Print data
   return (
     <>
@@ -65,7 +75,7 @@ const CardSelector = ({
                 {statTitle}
               </h5>
               <span className="font-semibold text-xl text-blueGray-700">
-                <AsyncSelect cacheOptions defaultOptions loadOptions={promiseOptions} />
+                <AsyncSelect cacheOptions defaultOptions loadOptions={promiseOptions} onChange={onChangeSelectedOption} />
               </span>
             </div>
           </div>
@@ -76,19 +86,13 @@ const CardSelector = ({
 };
 
 CardSelector.defaultProps = {
+  statId: '1234',
   statTitle: "Example",
-  statIconName: "far fa-chart-bar",
-  statIconColor: "bg-red-500",
 };
 
 CardSelector.propTypes = {
+  statId: PropTypes.string,
   statTitle: PropTypes.string,
-  // can be any of the text color utilities
-  // from tailwindcss
-  statIconName: PropTypes.string,
-  // can be any of the background color utilities
-  // from tailwindcss
-  statIconColor: PropTypes.string,
 };
 
 export default CardSelector;

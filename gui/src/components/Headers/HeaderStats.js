@@ -7,6 +7,7 @@ import CardControl from "components/Cards/CardControl.js";
 import CardSelector from "components/Cards/CardSelector.js";
 
 export default function HeaderStats() {
+  // Render Header Stats
   return (
     <>
       {/* Header */}
@@ -35,7 +36,7 @@ export default function HeaderStats() {
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
                 <CardControl
-                  statId="air"
+                  statId="light"
                   statTitle="Air Conditioning"
                   statIconName="fal fa-heat"
                   statIconColor="bg-lightBlue-500"

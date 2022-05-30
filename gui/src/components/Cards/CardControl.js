@@ -19,7 +19,7 @@ const CardControl = ({
         // Set status
         const status = (!value) ? 'on' : 'off';
         // Send local request to API
-        const resss = await fetch('http://localhost:3001/control/1234/light/' + status, {
+        const resss = await fetch('http://localhost:3001/control/807D3A42D1C5/' + statId + '/' + status, {
           method: 'GET',
           headers: {
             "Access-Control-Allow-Origin": "*",
@@ -61,12 +61,14 @@ const CardControl = ({
 };
 
 CardControl.defaultProps = {
+  statId: "light",
   statTitle: "Example",
   statIconName: "far fa-chart-bar",
   statIconColor: "bg-red-500",
 };
 
 CardControl.propTypes = {
+  statId: PropTypes.string,
   statTitle: PropTypes.string,
   // can be any of the text color utilities
   // from tailwindcss

@@ -5,3 +5,7 @@
 .fixed-min-height {
     min-height: 100px;
 }
+
+.display-none {
+    display: none;
+}
