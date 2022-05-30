@@ -56,10 +56,10 @@ mqttClient.on('connect', function () {
     // Connected to MQTT broker
     logger.info('Connected to MQTT broker.');
     // Subscribe to MQTT topics
-    mqttClient.subscribe('unishare/control/light', function (err) {
+    mqttClient.subscribe('unishare/sensors/807D3A42D1C5/light', function (err) {
         if (!err) logger.info('Subscribed to topic LIGHT.');
     });
-    mqttClient.subscribe('unishare/control/fire', function (err) {
+    mqttClient.subscribe('unishare/sensors/807D3A42D1C5/fire', function (err) {
         if (!err) logger.info('Subscribed to topic FIRE.');
     });
 });
@@ -71,7 +71,7 @@ mqttClient.on('message', function (topic, message) {
     // Get JSON data
     const data = JSON.parse(msg);
     // Log message
-    logging.debug('MQTT message: ' + message.toString());
+    logger.debug('MQTT message: ' + message.toString());
     // Check topic
     if (topic.includes('fire')) {
         // Get fire data
