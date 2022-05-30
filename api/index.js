@@ -90,7 +90,6 @@ app.get('/sensors', async function (req, res) {
             if (error) {
                 // Error
                 logger.error('Error getting sensors list.');
-                console.log(error.stack);
                 // Response
                 res.status(500).json({ sensors: [], success: false });
             }
