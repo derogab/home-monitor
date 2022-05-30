@@ -20,7 +20,7 @@ def connect_db():
 def get_all_devices():
     conn = connect_db()
     with conn.cursor() as cursor:
-        sql = "SELECT * FROM `home-monitor-devices`"
+        sql = "SELECT * FROM `home_monitor_devices`"
         cursor.execute(sql)
         result = cursor.fetchall()
         devices = []
@@ -32,7 +32,7 @@ def get_all_devices():
 def get_all_sensors():
     conn = connect_db()
     with conn.cursor() as cursor:
-        sql = "SELECT * FROM `home-monitor-devices` WHERE (lower(TYPE) LIKE 'sensors');"
+        sql = "SELECT * FROM `home_monitor_devices` WHERE (lower(TYPE) LIKE 'sensors');"
         cursor.execute(sql)
         result = cursor.fetchall()
         devices = []
@@ -45,7 +45,7 @@ def get_all_sensors():
 def exist_device_in_db(mac_address):
     conn = connect_db()
     with conn.cursor() as cursor:
-        sql = "SELECT MAC_ADDRESS FROM `home-monitor-devices` WHERE MAC_ADDRESS=%s"
+        sql = "SELECT MAC_ADDRESS FROM `home_monitor_devices` WHERE MAC_ADDRESS=%s"
         cursor.execute(sql, (mac_address,))
         result = cursor.fetchall()
         return bool(len(result) == 1)
@@ -55,14 +55,14 @@ def add_device_to_db(mac_address, name, dev_type):
     if exist_device_in_db(mac_address):
         print("Device ", mac_address, " already in db, with updating name ", name)
         with conn.cursor() as cursor:
-            sql = "UPDATE `home-monitor-devices` SET `NAME` = %s WHERE `home-monitor-devices`.`MAC_ADDRESS` = %s;"
+            sql = "UPDATE `home_monitor_devices` SET `NAME` = %s WHERE `home_monitor_devices`.`MAC_ADDRESS` = %s;"
             cursor.execute(sql, (name, mac_address))
             conn.commit()
             return True
     else:
         print("Adding device ", mac_address, " with name ", name, " type ", dev_type)      
         with conn.cursor() as cursor:
-            sql = "INSERT INTO `home-monitor-devices` VALUES(%s, %s, %s, TRUE)"
+            sql = "INSERT INTO `home_monitor_devices` VALUES(%s, %s, %s, TRUE)"
             cursor.execute(sql, (mac_address, name, dev_type,))
             conn.commit()
             return True
@@ -73,9 +73,9 @@ def update_device_status_db(mac_address, status):
         print("Updating device ", mac_address, " status: ", status)
         with conn.cursor() as cursor:
             if (status):
-                sql = "UPDATE `home-monitor-devices` SET `connected` = 1 WHERE `home-monitor-devices`.`MAC_ADDRESS` = %s;"
+                sql = "UPDATE `home_monitor_devices` SET `connected` = 1 WHERE `home_monitor_devices`.`MAC_ADDRESS` = %s;"
             else:
-                sql = "UPDATE `home-monitor-devices` SET `connected` = 0 WHERE `home-monitor-devices`.`MAC_ADDRESS` = %s;"
+                sql = "UPDATE `home_monitor_devices` SET `connected` = 0 WHERE `home_monitor_devices`.`MAC_ADDRESS` = %s;"
             cursor.execute(sql, (mac_address))
             conn.commit()
             return True
