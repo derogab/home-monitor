@@ -2,7 +2,8 @@ import React from "react";
 
 // components
 
-import CardStats from "components/Cards/CardStats.js";
+import CardStatsBool from "components/Cards/CardStatsBool.js";
+import CardStatsValue from "components/Cards/CardStatsValue.js";
 import CardControl from "components/Cards/CardControl.js";
 import CardSelector from "components/Cards/CardSelector.js";
 
@@ -18,7 +19,7 @@ export default function HeaderStats() {
             
             <div className="flex flex-wrap">
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
-                <CardStats
+                <CardStatsBool
                   statId="light"
                   statTitle="Light Status"
                   statData="1234"
@@ -27,7 +28,7 @@ export default function HeaderStats() {
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
-                <CardStats
+                <CardStatsBool
                   statId="fire"
                   statTitle="Fire"
                   statData="1234"
@@ -57,28 +58,29 @@ export default function HeaderStats() {
 
             <div className="flex flex-wrap">
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
-                <CardStats
-                  statId="light"
-                  statTitle="Light Status"
+                <CardStatsValue
+                  statId="temperature"
+                  statTitle="Temperature"
                   statData="1234"
-                  statIconName="fas fa-lightbulb"
-                  statIconColor="bg-yellow-500"
+                  statIconName="fas fa-thermometer-empty"
+                  statIconColor="bg-lightBlue-500"
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
-                <CardStats
-                  statId="fire"
-                  statTitle="Fire"
+                <CardStatsValue
+                  statId="apparent_temperature"
+                  statTitle="Apparent"
                   statData="1234"
-                  statIconName="fas fa-fire"
-                  statIconColor="bg-red-500"
+                  statIconName="fas fa-thermometer-half"
+                  statIconColor="bg-lightBlue-500"
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
-                <CardControl
-                  statId="light"
-                  statTitle="Light Control"
-                  statIconName="fas fa-lightbulb"
+                <CardStatsValue
+                  statId="humidity"
+                  statTitle="Humidity"
+                  statData="1234"
+                  statIconName="fas fa-tint"
                   statIconColor="bg-lightBlue-500"
                 />
               </div>

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 
-const CardStats = ({
+const CardStatsValue = ({
   statId,
   statTitle,
   statIconName,
   statIconColor,
 }) => {
   const [statDataValue, setStatDataValue] = useState(false);
-  
+
   // Update data
   useEffect(() => {
     setInterval(() => {
@@ -39,7 +39,7 @@ const CardStats = ({
         console.log("Unable to fetch - ", err);
       });
 
-    }, 2500);
+    }, 10000);
   }, [statId]);
 
   // Print data
@@ -53,7 +53,7 @@ const CardStats = ({
                 {statTitle}
               </h5>
               <span className="font-semibold text-xl text-blueGray-700">
-                {statDataValue ? "YES" : "NO"}
+                {statDataValue}
               </span>
             </div>
             <div className="relative w-auto pl-4 flex-initial">
@@ -73,14 +73,14 @@ const CardStats = ({
   );
 };
 
-CardStats.defaultProps = {
+CardStatsValue.defaultProps = {
   statId: "light",
   statTitle: "Example",
   statIconName: "far fa-chart-bar",
   statIconColor: "bg-red-500",
 };
 
-CardStats.propTypes = {
+CardStatsValue.propTypes = {
   statId: PropTypes.string,
   statTitle: PropTypes.string,
   // can be any of the text color utilities
@@ -91,4 +91,4 @@ CardStats.propTypes = {
   statIconColor: PropTypes.string,
 };
 
-export default CardStats;
+export default CardStatsValue;

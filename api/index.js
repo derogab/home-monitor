@@ -32,6 +32,9 @@ const mysql_database = process.env.MYSQL_DATABASE;
 // Global variables
 let mqtt_data_fire = false;
 let mqtt_data_light = false;
+let mqtt_data_temperature = 0;
+let mqtt_data_apparent_temperature = 0;
+let mqtt_data_humidity = 0;
 
 // Starting 
 logger.info('Starting API...');
@@ -62,6 +65,15 @@ mqttClient.on('connect', function () {
     mqttClient.subscribe('unishare/sensors/807D3A42D1C5/flame', function (err) {
         if (!err) logger.info('Subscribed to topic FIRE.');
     });
+    mqttClient.subscribe('unishare/sensors/807D3A42D1C5/temperature', function (err) {
+        if (!err) logger.info('Subscribed to topic TEMP.');
+    });
+    mqttClient.subscribe('unishare/sensors/807D3A42D1C5/apparent_temperature', function (err) {
+        if (!err) logger.info('Subscribed to topic APPARENT TEMP.');
+    });
+    mqttClient.subscribe('unishare/sensors/807D3A42D1C5/humidity', function (err) {
+        if (!err) logger.info('Subscribed to topic HUMIDITY.');
+    });
 });
 
 // MQTT message handler
@@ -84,6 +96,24 @@ mqttClient.on('message', function (topic, message) {
         const light = data.value || false;
         // Set light data
         mqtt_data_light = light;
+    }
+    else if (topic.includes('/temperature')) {
+        // Get light data
+        const temperature = data.value || 'N/A';
+        // Set light data
+        mqtt_data_temperature = temperature;
+    }
+    else if (topic.includes('apparent_temperature')) {
+        // Get light data
+        const apparent_temperature = data.value || 'N/A';
+        // Set light data
+        mqtt_data_apparent_temperature = apparent_temperature;
+    }
+    else if (topic.includes('humidity')) {
+        // Get light data
+        const humidity = data.value || 'N/A';
+        // Set light data
+        mqtt_data_humidity = humidity;
     }
 });
 
@@ -120,12 +150,32 @@ app.get('/fire', function (req, res) {
         value: mqtt_data_fire || false,
     });
 });
-
 // Light
 app.get('/light', function (req, res) {
     res.status(200).json({
         success: true,
         value: mqtt_data_light || false,
+    });
+});
+// Temperature
+app.get('/temperature', function (req, res) {
+    res.status(200).json({
+        success: true,
+        value: mqtt_data_temperature.toFixed(2) || 'N/A',
+    });
+});
+// Apparent Temperature
+app.get('/apparent_temperature', function (req, res) {
+    res.status(200).json({
+        success: true,
+        value: mqtt_data_apparent_temperature.toFixed(2) || 'N/A',
+    });
+});
+// Humidity
+app.get('/humidity', function (req, res) {
+    res.status(200).json({
+        success: true,
+        value: mqtt_data_humidity.toFixed(0) || 'N/A',
     });
 });
 
