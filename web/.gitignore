@@ -2,7 +2,6 @@
 
 # Configs
 .env
-influx_config.ini
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
