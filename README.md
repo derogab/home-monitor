@@ -12,7 +12,7 @@ An IOT project for Home Monitor
 - sottoscrive alle robe di sensori
 - sottoscrive per capire quali schede sono in rete
 - TODO bottone per spegnere lo schermo
-- TODO sleep
+- TODO sleep idea: bottone per far accendere il sistema, se entro TOT secondi l'utente non interagisce il sistema si spegne da solo
 - TODO autoconnect
 
 ## sensors
