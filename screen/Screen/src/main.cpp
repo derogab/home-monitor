@@ -20,6 +20,7 @@
 #define ALARM_BUTTON D5
 #define DEVICE_BUTTON D6
 #define BUTTON_DEBOUNCE_DELAY 200 // button debounce time in ms
+#define USER_DELAY 30000
 
 #define BUZZER D8
 
@@ -53,6 +54,7 @@ volatile unsigned long last_interrupt_inc = 0;
 volatile unsigned long last_interrupt_dec = 0;
 volatile unsigned long last_interrupt_alarm = 0;
 volatile unsigned long last_interrupt_devices_display = 0;
+volatile unsigned long last_user_interaction = 0;
 
 unsigned long last_refresh = 0;
 
@@ -191,12 +193,24 @@ void loop()
       last_refresh = now;
     }
   }
+  unsigned long now = millis();
+  if (now - last_user_interaction > USER_DELAY)
+  {
+#ifdef DEBUG
+    Serial.println("Going to sleep");
+#endif
+    mqttClient.disconnect();
+    lcd.clear();
+    lcd.noBacklight();
+    ESP.deepSleep(0);
+  }
 }
 
 // Helpers
 void isrInc()
 {
   unsigned long now = millis();
+  last_user_interaction = now;
   if (now - last_interrupt_inc > BUTTON_DEBOUNCE_DELAY)
   {
     displayMode++;
@@ -254,6 +268,8 @@ void IRAM_ATTR alarmInterrupt()
 
 void IRAM_ATTR deviceDisplayInterrupt()
 {
+  unsigned long now = millis();
+  last_user_interaction = now;
   if (number_of_devices == 0)
   {
     lcd.home();
@@ -261,7 +277,6 @@ void IRAM_ATTR deviceDisplayInterrupt()
     lcd.printf("No devices");
     return;
   }
-  unsigned long now = millis();
   if (now - last_interrupt_devices_display > BUTTON_DEBOUNCE_DELAY)
   {
     last_interrupt_devices_display = now;
