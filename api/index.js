@@ -1,16 +1,11 @@
 // Import logger
 const logger = require("./components/logger");
 // Import Express
-const express = require('express');
-const cors = require('cors');
-const app = express();
+const app = require("./components/express");
 // Import MQTT
 const mqtt = require('mqtt');
 // Import MySQL
 const mysql = require('mysql');
-
-// Init CORS
-app.use(cors({ origin: '*' }));
 
 // Init ENVs
 require('dotenv').config();
@@ -133,11 +128,6 @@ mysqlClient.connect(function(err) {
     }
    
     logger.info('Connected to MYSQL server as id ' + mysqlClient.threadId);
-});
-
-// Root
-app.get('/', function (req, res) {
-    res.status(200).send('Status: UP!');
 });
 
 // Fire
@@ -283,5 +273,3 @@ app.get('/control/:mac/air/off', function (req, res) {
     }
 });
 
-// Listen
-app.listen(3001);
