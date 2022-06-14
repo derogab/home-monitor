@@ -15,12 +15,10 @@
 #define DISPLAY_MODE_N 6
 #define DISPLAY_REFRESH_RATE 5000
 
-#define incPin D3
+#define INC_PIN D3
 #define DEVICE_BUTTON D6
 #define BUTTON_DEBOUNCE_DELAY 200 // button debounce time in ms
 #define USER_DELAY 30000
-
-#define BUZZER D8
 
 #define MQTT_BUFFER_SIZE 2048            // the maximum size for packets being published and received
 MQTTClient mqttClient(MQTT_BUFFER_SIZE); // handles the MQTT communication protocol
@@ -77,11 +75,8 @@ void setup()
   // set BUTTON pin as input with pull-up
   pinMode(DEVICE_BUTTON, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(DEVICE_BUTTON), deviceDisplayInterrupt, FALLING);
-  pinMode(incPin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(incPin), isrInc, FALLING);
-
-  pinMode(BUZZER, OUTPUT);
-  digitalWrite(BUZZER, LOW);
+  pinMode(INC_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(INC_PIN), isrInc, FALLING);
 
   if (error == 0)
   {
@@ -411,7 +406,7 @@ void mqttMessageReceived(String &topic, String &payload)
       }
     }
 
-    if (i ==  10)
+    if (i == 10)
       return;
 
     if (data_type == "humidity")
@@ -464,7 +459,7 @@ void mqttMessageReceived(String &topic, String &payload)
         break;
       }
     }
-    if (i==10)
+    if (i == 10)
       return;
     all_sensors[index].status = stat_doc["connected"].as<bool>();
     return;
