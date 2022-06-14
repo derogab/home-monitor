@@ -1,5 +1,5 @@
 // Import logger
-const Logger = require("@ptkdev/logger");
+const logger = require("./components/logger");
 // Import Express
 const express = require('express');
 const cors = require('cors');
@@ -14,9 +14,6 @@ app.use(cors({ origin: '*' }));
 
 // Init ENVs
 require('dotenv').config();
-
-// Init logger
-const logger = new Logger();
 
 // Get configs
 const mqtt_host = process.env.MQTT_HOST;
