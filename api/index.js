@@ -1,5 +1,5 @@
 // Import logger
-const logger = require("./components/logger");
+const logger = require("./utils/logger");
 // Import api management
 const apiManagement = require("./components/apiManagement");
 // Import device management

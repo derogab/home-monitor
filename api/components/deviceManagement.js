@@ -1,5 +1,5 @@
 // Logger
-const logger = require('./logger');
+const logger = require('../utils/logger');
 
 // Import MySQL
 const mysql = require('mysql');
