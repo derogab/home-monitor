@@ -2,6 +2,8 @@
 const logger = require("./components/logger");
 // Import Express
 const app = require("./components/express");
+// Import device management
+const deviceManagement = require("./components/deviceManagement");
 // Import MQTT
 const mqtt = require('mqtt');
 // Import MySQL
@@ -168,29 +170,12 @@ app.get('/humidity', function (req, res) {
 
 // Sensors
 app.get('/sensors', async function (req, res) {
-    // Logs
-    logger.debug('Trying to get the sensors list...');
-    // Check it client is set
-    if (mysqlClient) {
-        // Get devices from DB
-        mysqlClient.query("SELECT NAME AS name, MAC_ADDRESS as mac FROM home_monitor_devices WHERE TYPE = 'sensors'", function (error, results, fields) {
-            if (error) {
-                // Error
-                logger.error('Error getting sensors list.');
-                // Response
-                res.status(500).json({ sensors: [], success: false });
-            }
-            // Log
-            logger.debug((results ? results.length : 0) + ' sensor(s) found!');
-            // Return data
-            res.status(200).json({ sensors: results, success: true });
-        });
-    } else {
-        // Send response
-        res.status(500).json({ sensors: [], success: false });
-        // Log
-        logger.error('Failed to get the sensors list.');
-    }
+    // Get sensors list
+    const result = await deviceManagement.getDevices();
+    // Check if success
+    const code = (result && result.success) ? 200 : 500;
+    // Reply w/ results
+    res.status(code).json(result);
 });
 
 // Control LIGHT
