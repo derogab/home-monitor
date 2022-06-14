@@ -6,13 +6,14 @@ const CardStatsBool = ({
   statTitle,
   statIconName,
   statIconColor,
+  deviceSelected,
 }) => {
   const [statDataValue, setStatDataValue] = useState(false);
-  
+
   // Update data
   useEffect(() => {
-    setInterval(() => {
-      
+    const interval = setInterval(() => {
+
       fetch('http://localhost:3001/' + statId, {
         method: 'GET',
         headers: {
@@ -40,7 +41,14 @@ const CardStatsBool = ({
       });
 
     }, 3000);
-  }, [statId]);
+
+    return () => {
+
+      clearInterval(interval);
+
+    };
+
+  }, [statId, deviceSelected]);
 
   // Print data
   return (
@@ -78,6 +86,7 @@ CardStatsBool.defaultProps = {
   statTitle: "Example",
   statIconName: "far fa-chart-bar",
   statIconColor: "bg-red-500",
+  deviceSelected: null,
 };
 
 CardStatsBool.propTypes = {
@@ -89,6 +98,8 @@ CardStatsBool.propTypes = {
   // can be any of the background color utilities
   // from tailwindcss
   statIconColor: PropTypes.string,
+  // selected device
+  deviceSelected: PropTypes.string,
 };
 
 export default CardStatsBool;

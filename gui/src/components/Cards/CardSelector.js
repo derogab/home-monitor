@@ -50,6 +50,7 @@ const promiseOptions = () =>
 const CardSelector = ({
   statId,
   statTitle,
+  onChangeCallback,
 }) => {
   // Init stateful
   const [value, setValue] = useState(1);
@@ -62,6 +63,8 @@ const CardSelector = ({
     const selectedOption = e.value; 
     // Log
     console.log('CardSelector / Selected: ', selectedOption);
+    // Callback
+    onChangeCallback(selectedOption);
   };
 
   // Print data
@@ -88,11 +91,13 @@ const CardSelector = ({
 CardSelector.defaultProps = {
   statId: '1234',
   statTitle: "Example",
+  onChangeCallback: null
 };
 
 CardSelector.propTypes = {
   statId: PropTypes.string,
   statTitle: PropTypes.string,
+  onChangeCallback: PropTypes.func
 };
 
 export default CardSelector;

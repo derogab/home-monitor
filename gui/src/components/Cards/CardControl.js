@@ -7,6 +7,7 @@ const CardControl = ({
   statTitle,
   statIconName,
   statIconColor,
+  deviceSelected,
 }) => {
   // Init stateful
   const [value, setValue] = useState(false);
@@ -65,6 +66,7 @@ CardControl.defaultProps = {
   statTitle: "Example",
   statIconName: "far fa-chart-bar",
   statIconColor: "bg-red-500",
+  deviceSelected: null,
 };
 
 CardControl.propTypes = {
@@ -76,6 +78,8 @@ CardControl.propTypes = {
   // can be any of the background color utilities
   // from tailwindcss
   statIconColor: PropTypes.string,
+  // selected device
+  deviceSelected: PropTypes.string,
 };
 
 export default CardControl;
