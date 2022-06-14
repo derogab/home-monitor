@@ -19,6 +19,7 @@
 #define DEVICE_BUTTON D6
 #define BUTTON_DEBOUNCE_DELAY 200 // button debounce time in ms
 #define USER_DELAY 30000
+#define CONNECTION_TIMEOUT_CUSTOM 15000
 
 #define MQTT_BUFFER_SIZE 2048            // the maximum size for packets being published and received
 MQTTClient mqttClient(MQTT_BUFFER_SIZE); // handles the MQTT communication protocol
@@ -55,11 +56,11 @@ unsigned long last_refresh = 0;
 sensors_t all_sensors[10];
 int number_of_devices = 0;
 
-void connectToWiFi();
+bool connectToWiFi();
 void IRAM_ATTR deviceDisplayInterrupt();
 void IRAM_ATTR isrInc();
 void printDisplayInfo();
-void connectToMQTTBroker();
+bool connectToMQTTBroker();
 void mqttMessageReceived(String &topic, String &payload);
 String clearMacAddress(String mac_address);
 
@@ -130,43 +131,50 @@ void loop()
 {
   if (!sent_setup)
   {
-    connectToWiFi();       // connect to WiFi (if not already connected)
-    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
-    DynamicJsonDocument doc(256);
-    doc["mac_address"] = mac_address;
-    doc["type"] = "screen";
-    doc["name"] = "schermo1";
-    char buffer[256];
-    size_t n = serializeJson(doc, buffer);
+    if (connectToWiFi())
+    {
+      if (connectToMQTTBroker())
+      {
+        DynamicJsonDocument doc(256);
+        doc["mac_address"] = mac_address;
+        doc["type"] = "screen";
+        doc["name"] = "schermo1";
+        char buffer[256];
+        size_t n = serializeJson(doc, buffer);
 
 #ifdef DEBUG
-    Serial.print(F("JSON setup message: "));
-    Serial.println(buffer);
+        Serial.print(F("JSON setup message: "));
+        Serial.println(buffer);
 #endif
 
-    if (mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
-    {
-      sent_setup = true;
+        if (mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
+        {
+          sent_setup = true;
+        }
+      }
     }
   }
   else
   {
-    connectToWiFi();       // connect to WiFi (if not already connected)
-    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
-
-    if (!mqttClient.loop())
+    if (connectToWiFi())
     {
+      if (connectToMQTTBroker())
+      {
+        if (!mqttClient.loop())
+        {
 #ifdef DEBUG
-      Serial.println(mqttClient.lastError());
+          Serial.println(mqttClient.lastError());
 #endif
-      mqttClient.disconnect();
-    }
+          mqttClient.disconnect();
+        }
 
-    unsigned long now = millis();
-    if (now - last_refresh > DISPLAY_REFRESH_RATE)
-    {
-      printDisplayInfo();
-      last_refresh = now;
+        unsigned long now = millis();
+        if (now - last_refresh > DISPLAY_REFRESH_RATE)
+        {
+          printDisplayInfo();
+          last_refresh = now;
+        }
+      }
     }
   }
   unsigned long now = millis();
@@ -275,7 +283,7 @@ void printDisplayInfo()
   }
 }
 
-void connectToWiFi()
+bool connectToWiFi()
 {
   // connect to WiFi (if not already connected)
   if (WiFi.status() != WL_CONNECTED)
@@ -290,38 +298,59 @@ void connectToWiFi()
 #endif
 
     WiFi.begin(ssid, pass);
-    while (WiFi.status() != WL_CONNECTED)
+    unsigned long wifi_now = millis();
+    unsigned long wifi_start_time = millis();
+    while (WiFi.status() != WL_CONNECTED && (wifi_now - wifi_start_time < CONNECTION_TIMEOUT_CUSTOM))
     {
 #ifdef DEBUG
       Serial.print(F("."));
 #endif
       delay(250);
+      wifi_now = millis();
     }
 
 #ifdef DEBUG
-    Serial.println(F("\nConnected!"));
+    if (WiFi.status() != WL_CONNECTED)
+      Serial.println(F("\nFailed to connect to wifi"));
+    else
+      Serial.println(F("\nConnected!"));
 #endif
+    if (WiFi.status() != WL_CONNECTED)
+      return false;
+    else
+      return true;
   }
+  return true;
 }
 
-void connectToMQTTBroker()
+bool connectToMQTTBroker()
 {
   if (!mqttClient.connected())
   { // not connected
 #ifdef DEBUG
     Serial.print(F("\nConnecting to MQTT broker..."));
 #endif
-    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD))
+    unsigned long mqtt_now = millis();
+    unsigned long mqtt_start_time = millis();
+    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD) && (mqtt_now - mqtt_start_time < CONNECTION_TIMEOUT_CUSTOM))
     {
 #ifdef DEBUG
       Serial.print(F("."));
 #endif
       delay(200);
+      mqtt_now = millis();
     }
+    if (!mqttClient.connected())
+    {
+#ifdef DEBUG
+      Serial.println(F("\nFailed to connect to MQTT"));
+#endif
+      return false;
+    }
+
 #ifdef DEBUG
     Serial.println(F("\nConnected!"));
 #endif
-
     // connected to broker, subscribe topics
     mqttClient.subscribe(MQTT_TOPIC_DEVICES, 1);
     String topic_sensors = String(MQTT_TOPIC_SENSORS) + "#";
@@ -339,7 +368,9 @@ void connectToMQTTBroker()
     size_t n = serializeJson(doc_stat, buffer_stat);
     const char *topic_status = mqtt_topic_my_status.c_str();
     mqttClient.publish(topic_status, buffer_stat, n, true, 1);
+    return true;
   }
+  return true;
 }
 
 void mqttMessageReceived(String &topic, String &payload)
