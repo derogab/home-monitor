@@ -1,7 +1,7 @@
 // Import logger
 const logger = require("./components/logger");
-// Import Express
-const app = require("./components/express");
+// Import api management
+const apiManagement = require("./components/apiManagement");
 // Import device management
 const deviceManagement = require("./components/deviceManagement");
 // Import MQTT
@@ -133,35 +133,35 @@ mysqlClient.connect(function(err) {
 });
 
 // Fire
-app.get('/fire', function (req, res) {
+apiManagement.get('/fire', function (req, res) {
     res.status(200).json({
         success: true,
         value: mqtt_data_fire || false,
     });
 });
 // Light
-app.get('/light', function (req, res) {
+apiManagement.get('/light', function (req, res) {
     res.status(200).json({
         success: true,
         value: mqtt_data_light || false,
     });
 });
 // Temperature
-app.get('/temperature', function (req, res) {
+apiManagement.get('/temperature', function (req, res) {
     res.status(200).json({
         success: true,
         value: mqtt_data_temperature.toFixed(2) || 'N/A',
     });
 });
 // Apparent Temperature
-app.get('/apparent_temperature', function (req, res) {
+apiManagement.get('/apparent_temperature', function (req, res) {
     res.status(200).json({
         success: true,
         value: mqtt_data_apparent_temperature.toFixed(2) || 'N/A',
     });
 });
 // Humidity
-app.get('/humidity', function (req, res) {
+apiManagement.get('/humidity', function (req, res) {
     res.status(200).json({
         success: true,
         value: mqtt_data_humidity.toFixed(0) || 'N/A',
@@ -169,7 +169,7 @@ app.get('/humidity', function (req, res) {
 });
 
 // Sensors
-app.get('/sensors', async function (req, res) {
+apiManagement.get('/sensors', async function (req, res) {
     // Get sensors list
     const result = await deviceManagement.getDevices();
     // Check if success
@@ -180,7 +180,7 @@ app.get('/sensors', async function (req, res) {
 
 // Control LIGHT
 // LIGHT: ON
-app.get('/control/:mac/light/on', function (req, res) {
+apiManagement.get('/control/:mac/light/on', function (req, res) {
     // Logs
     logger.debug('Turning ON light of ' + req.params.mac + '...');
     // Check it client is set
@@ -199,7 +199,7 @@ app.get('/control/:mac/light/on', function (req, res) {
     }
 });
 // LIGHT: OFF
-app.get('/control/:mac/light/off', function (req, res) {
+apiManagement.get('/control/:mac/light/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF light of ' + req.params.mac + '...');
     // Check it client is set
@@ -220,7 +220,7 @@ app.get('/control/:mac/light/off', function (req, res) {
 
 // Control AIR
 // AIR: ON
-app.get('/control/:mac/air/on', function (req, res) {
+apiManagement.get('/control/:mac/air/on', function (req, res) {
     // Logs
     logger.debug('Turning ON air of ' + req.params.mac + '...');
     // Check it client is set
@@ -239,7 +239,7 @@ app.get('/control/:mac/air/on', function (req, res) {
     }
 });
 // AIR: OFF
-app.get('/control/:mac/air/off', function (req, res) {
+apiManagement.get('/control/:mac/air/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF air of ' + req.params.mac + '...');
     // Check it client is set
