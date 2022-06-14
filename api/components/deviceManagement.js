@@ -26,11 +26,12 @@ const mysqlClient = mysql.createConnection({
 
 // Server connection
 const _connect = async function() {
+    // Log
+    logger.debug('Connecting to MYSQL server...');
     // Resolve Promise
     return new Promise((resolve) => {
 
         // Try to connect to MYSQL server
-        logger.debug('Connecting to MYSQL server...');
         logger.debug('MYSQL server: ' + mysql_host + ':' + mysql_port);
         mysqlClient.connect(function(err) {
             // Failed

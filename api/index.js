@@ -6,8 +6,6 @@ const apiManagement = require("./components/apiManagement");
 const deviceManagement = require("./components/deviceManagement");
 // Import MQTT
 const mqtt = require('mqtt');
-// Import MySQL
-const mysql = require('mysql');
 
 // Init ENVs
 require('dotenv').config();
@@ -17,11 +15,6 @@ const mqtt_host = process.env.MQTT_HOST;
 const mqtt_port = process.env.MQTT_PORT;
 const mqtt_user = process.env.MQTT_USERNAME;
 const mqtt_pass = process.env.MQTT_PASSWORD;
-const mysql_host = process.env.MYSQL_HOST;
-const mysql_port = process.env.MYSQL_PORT;
-const mysql_user = process.env.MYSQL_USERNAME;
-const mysql_pass = process.env.MYSQL_PASSWORD;
-const mysql_database = process.env.MYSQL_DATABASE;
 
 // Global variables
 let mqtt_data_fire = false;
@@ -109,27 +102,6 @@ mqttClient.on('message', function (topic, message) {
         // Set light data
         mqtt_data_humidity = humidity;
     }
-});
-
-// Init MYSQL client 
-logger.debug('Starting MYSQL...');
-const mysqlClient = mysql.createConnection({
-    host     : mysql_host || 'localhost',
-    port     : mysql_port || 3306,
-    user     : mysql_user,
-    password : mysql_pass,
-    database : mysql_database
-});
-// Try to connect to MYSQL server
-logger.debug('Connecting to MYSQL server...');
-logger.debug('MYSQL server: ' + mysql_host + ':' + mysql_port);
-mysqlClient.connect(function(err) {
-    if (err) {
-      logger.error('MySQL Connecting Error: ' + err.stack);
-      return;
-    }
-   
-    logger.info('Connected to MYSQL server as id ' + mysqlClient.threadId);
 });
 
 // Fire
