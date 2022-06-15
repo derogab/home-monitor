@@ -1,0 +1,4 @@
+256dpi/MQTT@^2.5.0
+adafruit/Adafruit Unified Sensor@^1.1.5
+bblanchon/ArduinoJson@^6.19.4
+adafruit/DHT sensor library@^1.4.3
