@@ -1,9 +1,10 @@
-// Import logger
+// Import utils
 const logger = require("./utils/logger");
-// Import api management
+// Import components management
 const apiManagement = require("./components/apiManagement");
-// Import device management
 const deviceManagement = require("./components/deviceManagement");
+const dataManagement = require("./components/dataManagement");
+
 // Import MQTT
 const mqtt = require('mqtt');
 
@@ -15,13 +16,6 @@ const mqtt_host = process.env.MQTT_HOST;
 const mqtt_port = process.env.MQTT_PORT;
 const mqtt_user = process.env.MQTT_USERNAME;
 const mqtt_pass = process.env.MQTT_PASSWORD;
-
-// Global variables
-let mqtt_data_fire = false;
-let mqtt_data_light = false;
-let mqtt_data_temperature = 0;
-let mqtt_data_apparent_temperature = 0;
-let mqtt_data_humidity = 0;
 
 // Starting 
 logger.info('Starting API...');
@@ -69,74 +63,76 @@ mqttClient.on('message', function (topic, message) {
     const msg = message.toString();
     // Get JSON data
     const data = JSON.parse(msg);
+    // Get device 
+    const device = topic.split('/')[2];
     // Log message
-    logger.debug('MQTT message: ' + message.toString());
+    logger.debug('MQTT message: ' + message.toString() + ' from device ' +  device);
     // Check topic
     if (topic.includes('flame')) {
         // Get fire data
         const fire = data.value || false;
         // Set fire data
-        mqtt_data_fire = fire;
+        dataManagement.set(device, dataManagement.FIRE, fire);
     }
     else if (topic.includes('light')) {
         // Get light data
         const light = data.value || false;
         // Set light data
-        mqtt_data_light = light;
+        dataManagement.set(device, dataManagement.LIGHT, light);
     }
     else if (topic.includes('/temperature')) {
-        // Get light data
+        // Get temperature data
         const temperature = data.value || 'N/A';
-        // Set light data
-        mqtt_data_temperature = temperature;
+        // Set temperature data
+        dataManagement.set(device, dataManagement.TEMPERATURE, temperature);
     }
     else if (topic.includes('apparent_temperature')) {
-        // Get light data
+        // Get apparent temperature data
         const apparent_temperature = data.value || 'N/A';
-        // Set light data
-        mqtt_data_apparent_temperature = apparent_temperature;
+        // Set apparent temperature data
+        dataManagement.set(device, dataManagement.APPARENT_TEMPERATURE, apparent_temperature);
     }
     else if (topic.includes('humidity')) {
-        // Get light data
+        // Get humidity data
         const humidity = data.value || 'N/A';
-        // Set light data
-        mqtt_data_humidity = humidity;
+        // Set humidity data
+        dataManagement.set(device, dataManagement.HUMIDITY, humidity);
     }
 });
 
 // Fire
-apiManagement.get('/fire', function (req, res) {
+apiManagement.get('/status/:device/fire', function (req, res) {
     res.status(200).json({
         success: true,
-        value: mqtt_data_fire || false,
+        value: dataManagement.get(req.params.device, dataManagement.FIRE) || false,
     });
 });
 // Light
-apiManagement.get('/light', function (req, res) {
+apiManagement.get('/status/:device/light', function (req, res) {
     res.status(200).json({
         success: true,
-        value: mqtt_data_light || false,
+        value: dataManagement.get(req.params.device, dataManagement.LIGHT) || false,
     });
 });
 // Temperature
-apiManagement.get('/temperature', function (req, res) {
+apiManagement.get('/status/:device/temperature', function (req, res) {
     res.status(200).json({
         success: true,
-        value: mqtt_data_temperature.toFixed(2) || 'N/A',
+        value: dataManagement.get(req.params.device, dataManagement.TEMPERATURE).toFixed(2) || 'N/A',
     });
 });
 // Apparent Temperature
-apiManagement.get('/apparent_temperature', function (req, res) {
+apiManagement.get('/status/:device/apparent_temperature', function (req, res) {
     res.status(200).json({
         success: true,
-        value: mqtt_data_apparent_temperature.toFixed(2) || 'N/A',
+        value: dataManagement.get(req.params.device, dataManagement.APPARENT_TEMPERATURE).toFixed(2) || 'N/A',
     });
 });
 // Humidity
-apiManagement.get('/humidity', function (req, res) {
+apiManagement.get('/status/:device/humidity', function (req, res) {
     res.status(200).json({
         success: true,
-        value: mqtt_data_humidity.toFixed(0) || 'N/A',
+        value: dataManagement.get(req.params.device, dataManagement.HUMIDITY).toFixed(0) || 'N/A',
     });
 });
 
