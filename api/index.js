@@ -3,6 +3,7 @@ const logger = require("./utils/logger");
 // Import components management
 const apiManagement = require("./components/apiManagement");
 const dataManagement = require("./components/dataManagement");
+const telegramManagement = require("./components/telegramManagement");
 
 // Import MQTT
 const mqtt = require('mqtt');
@@ -219,3 +220,4 @@ apiManagement.webserver.get('/control/:mac/air/off', function (req, res) {
 
 // Start modules
 apiManagement.startWebServer(3001);
+telegramManagement.startBot();
