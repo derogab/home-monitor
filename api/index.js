@@ -100,35 +100,35 @@ mqttClient.on('message', function (topic, message) {
 });
 
 // Fire
-apiManagement.get('/status/:device/fire', function (req, res) {
+apiManagement.webserver.get('/status/:device/fire', function (req, res) {
     res.status(200).json({
         success: true,
         value: dataManagement.get(req.params.device, dataManagement.FIRE) || false,
     });
 });
 // Light
-apiManagement.get('/status/:device/light', function (req, res) {
+apiManagement.webserver.get('/status/:device/light', function (req, res) {
     res.status(200).json({
         success: true,
         value: dataManagement.get(req.params.device, dataManagement.LIGHT) || false,
     });
 });
 // Temperature
-apiManagement.get('/status/:device/temperature', function (req, res) {
+apiManagement.webserver.get('/status/:device/temperature', function (req, res) {
     res.status(200).json({
         success: true,
         value: dataManagement.get(req.params.device, dataManagement.TEMPERATURE).toFixed(2) || 'N/A',
     });
 });
 // Apparent Temperature
-apiManagement.get('/status/:device/apparent_temperature', function (req, res) {
+apiManagement.webserver.get('/status/:device/apparent_temperature', function (req, res) {
     res.status(200).json({
         success: true,
         value: dataManagement.get(req.params.device, dataManagement.APPARENT_TEMPERATURE).toFixed(2) || 'N/A',
     });
 });
 // Humidity
-apiManagement.get('/status/:device/humidity', function (req, res) {
+apiManagement.webserver.get('/status/:device/humidity', function (req, res) {
     res.status(200).json({
         success: true,
         value: dataManagement.get(req.params.device, dataManagement.HUMIDITY).toFixed(0) || 'N/A',
@@ -137,7 +137,7 @@ apiManagement.get('/status/:device/humidity', function (req, res) {
 
 // Control LIGHT
 // LIGHT: ON
-apiManagement.get('/control/:mac/light/on', function (req, res) {
+apiManagement.webserver.get('/control/:mac/light/on', function (req, res) {
     // Logs
     logger.debug('Turning ON light of ' + req.params.mac + '...');
     // Check it client is set
@@ -156,7 +156,7 @@ apiManagement.get('/control/:mac/light/on', function (req, res) {
     }
 });
 // LIGHT: OFF
-apiManagement.get('/control/:mac/light/off', function (req, res) {
+apiManagement.webserver.get('/control/:mac/light/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF light of ' + req.params.mac + '...');
     // Check it client is set
@@ -177,7 +177,7 @@ apiManagement.get('/control/:mac/light/off', function (req, res) {
 
 // Control AIR
 // AIR: ON
-apiManagement.get('/control/:mac/air/on', function (req, res) {
+apiManagement.webserver.get('/control/:mac/air/on', function (req, res) {
     // Logs
     logger.debug('Turning ON air of ' + req.params.mac + '...');
     // Check it client is set
@@ -196,7 +196,7 @@ apiManagement.get('/control/:mac/air/on', function (req, res) {
     }
 });
 // AIR: OFF
-apiManagement.get('/control/:mac/air/off', function (req, res) {
+apiManagement.webserver.get('/control/:mac/air/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF air of ' + req.params.mac + '...');
     // Check it client is set
@@ -215,3 +215,7 @@ apiManagement.get('/control/:mac/air/off', function (req, res) {
     }
 });
 
+
+
+// Start modules
+apiManagement.startWebServer(3001);

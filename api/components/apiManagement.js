@@ -23,8 +23,12 @@ app.get('/devices', async function (req, res) {
     res.status(code).json(result);
 });
 
-// Listen
-app.listen(3001);
+// Start webserver
+const start = function(port = 3000) {
+    // Listen
+    app.listen(port);
+}
 
 // Export app
-module.exports = app;
+module.exports.webserver = app;
+module.exports.startWebServer = start;
