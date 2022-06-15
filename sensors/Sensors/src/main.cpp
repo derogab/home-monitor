@@ -99,6 +99,7 @@ bool data_flame;
 double data_temperature;
 double data_apparent_temperature;
 double data_humidity;
+long rssi;
 
 // actuators values;
 double ac_temp;
@@ -108,6 +109,7 @@ String ac_previous_state;
 // Functions
 // -------------------------------
 void printWifiStatus();
+void awakeConnection();
 long connectToWiFi();
 void connectToMQTTBroker();
 void mqttMessageReceived(String &topic, String &payload);
@@ -175,6 +177,7 @@ void setup()
 bool sent_setup = false;
 unsigned long last_log_time = 0;
 unsigned long last_control_time = 0;
+bool wifi_awake = false;
 
 void loop()
 {
@@ -210,6 +213,12 @@ void loop()
 #endif
       data_flame = true;
       String attribute = "flame";
+
+      if (!wifi_awake)
+      {
+        awakeConnection();
+      }
+
       sendMqttBool(attribute, data_flame);
     }
     else if (fire == LOW && data_flame)
@@ -221,16 +230,25 @@ void loop()
       data_flame = false;
 
       String attribute = "flame";
+      if (!wifi_awake)
+      {
+        awakeConnection();
+      }
       sendMqttBool(attribute, data_flame);
     }
-    
+
     currentTime = millis();
 
     // Check incoming mqtt controls
     if (currentTime - last_control_time > MQTT_CONTROL_DELAY)
     {
-      connectToWiFi();
-      connectToMQTTBroker();
+#ifdef DEBUG
+      Serial.println("MQTT CONTROL LOOP");
+#endif
+      if (!wifi_awake)
+      {
+        awakeConnection();
+      }
 
       if (!mqttClient.loop())
       {
@@ -259,14 +277,19 @@ void loop()
       lastAcControl = currentTime;
       acAutoControl();
     }
-    
+
     // Send data periodically
     if (currentTime - last_log_time > LOG_DELAY)
     {
+#ifdef DEBUG
+      Serial.println("LOG LOOP");
+#endif
       last_log_time = currentTime;
+      if (!wifi_awake)
+      {
+        awakeConnection();
+      }
 
-      long rssi = connectToWiFi();
-      connectToMQTTBroker();
       String attribute = "";
 
       // log RSSI
@@ -287,10 +310,10 @@ void loop()
       }
       attribute = "light";
       sendMqttBool(attribute, data_light);
-      
+
       // log TEMP/HUM
 
-      double h = dht.readHumidity();   
+      double h = dht.readHumidity();
       double t = dht.readTemperature();
 
       if (isnan(h) || isnan(t))
@@ -322,10 +345,16 @@ void loop()
       sendMqttDouble(attribute, data_temperature);
       attribute = "apparent_temperature";
       sendMqttDouble(attribute, data_apparent_temperature);
-
-
     }
 
+    // send modem to sleep if awake
+    if (wifi_awake)
+    {
+      WiFi.mode(WIFI_OFF);
+      WiFi.forceSleepBegin();
+      mqttClient.disconnect();
+      wifi_awake = false;
+    }
   }
 }
 
@@ -361,6 +390,15 @@ void printWifiStatus()
   Serial.println(WiFi.dnsIP());
 
   Serial.println(F("==============================\n"));
+}
+
+void awakeConnection()
+{
+  WiFi.forceSleepWake();
+  delay(1);
+  rssi = connectToWiFi();
+  connectToMQTTBroker();
+  wifi_awake = true;
 }
 
 long connectToWiFi()
