@@ -200,7 +200,30 @@ void loop()
   }
   else
   {
+    // Send flame data if status changed
+    int fire = digitalRead(FLAME);
+    if (fire == HIGH && !data_flame)
+    {
 
+#ifdef DEBUG
+      Serial.println("Fire! Fire!");
+#endif
+      data_flame = true;
+      String attribute = "flame";
+      sendMqttBool(attribute, data_flame);
+    }
+    else if (fire == LOW && data_flame)
+    {
+
+#ifdef DEBUG
+      Serial.println("No more fire!");
+#endif
+      data_flame = false;
+
+      String attribute = "flame";
+      sendMqttBool(attribute, data_flame);
+    }
+    
     currentTime = millis();
 
     // Check incoming mqtt controls
@@ -219,6 +242,24 @@ void loop()
       last_control_time = currentTime;
     }
 
+    // automatic AC control
+    if (ac_mode == "auto" && (currentTime - lastAcControl > AC_CONTROL_DELAY))
+    {
+      if (!temp_read)
+      {
+        double t = dht.readTemperature(); // temperature Celsius, range 0-50°C (±2°C accuracy)
+
+        if (isnan(t))
+        { // readings failed, skip
+          Serial.println(F("Failed to read from DHT sensor!"));
+          return;
+        }
+        data_temperature = t;
+      }
+      lastAcControl = currentTime;
+      acAutoControl();
+    }
+    
     // Send data periodically
     if (currentTime - last_log_time > LOG_DELAY)
     {
@@ -285,46 +326,6 @@ void loop()
 
     }
 
-    // Send flame data if status changed
-    int fire = digitalRead(FLAME);
-    if (fire == HIGH && !data_flame)
-    {
-
-#ifdef DEBUG
-      Serial.println("Fire! Fire!");
-#endif
-      data_flame = true;
-      String attribute = "flame";
-      sendMqttBool(attribute, data_flame);
-    }
-    else if (fire == LOW && data_flame)
-    {
-
-#ifdef DEBUG
-      Serial.println("No more fire!");
-#endif
-      data_flame = false;
-
-      String attribute = "flame";
-      sendMqttBool(attribute, data_flame);
-    }
-
-    // automatic AC control
-    if (ac_mode == "auto" && (currentTime - lastAcControl > AC_CONTROL_DELAY))
-    {
-      if (!temp_read)
-      {
-        double t = dht.readTemperature(); // temperature Celsius, range 0-50°C (±2°C accuracy)
-
-        if (isnan(t))
-        { // readings failed, skip
-          Serial.println(F("Failed to read from DHT sensor!"));
-          return;
-        }
-        data_temperature = t;
-      }
-      acAutoControl();
-    }
   }
 }
 
