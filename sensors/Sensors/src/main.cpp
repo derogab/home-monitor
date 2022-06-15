@@ -165,6 +165,8 @@ void setup()
   serializeJson(doc_will, buffer_will);
   const char *topic_status = mqtt_topic_status.c_str();
   mqttClient.setWill(topic_status, buffer_will, true, 1);
+  mqttClient.setKeepAlive(LOG_DELAY/1000 + 2);
+  mqttClient.setCleanSession(false);
 
 #ifdef DEBUG
   Serial.println("Setup completed!");
@@ -352,7 +354,6 @@ void loop()
     {
       WiFi.mode(WIFI_OFF);
       WiFi.forceSleepBegin();
-      mqttClient.disconnect();
       wifi_awake = false;
     }
   }
