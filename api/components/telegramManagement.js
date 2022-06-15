@@ -4,6 +4,10 @@ const { Telegraf, Markup } = require('telegraf');
 const logger = require('../utils/logger');
 // Import other components
 const deviceManagement = require('./deviceManagement');
+const dataManagement = require('./dataManagement');
+
+// Globals
+const CALLBACK_PREFIX_DEVICE = 'device_';
 
 // Init ENVs
 require('dotenv').config();
@@ -25,7 +29,8 @@ module.exports.startBot = function() {
 // Simple conversational commands
 const help_message = function() {
     // Write help message
-    msg  = "All available commands: \n\n";
+    let msg = "";
+    msg += "All available commands: \n\n";
     msg += "/start - the welcome command\n";
     msg += "/help - the help command\n";
     msg += "/devices - all the available devices\n";
@@ -63,7 +68,7 @@ const get_devices = async function(ctx) {
     for (let i = 0; i < result.devices.length; i++) {
         const device = result.devices[i];
         keyboard.push([
-            { text: device.name, callback_data: device.mac }
+            { text: device.name, callback_data: (CALLBACK_PREFIX_DEVICE + device.mac) }
         ]);
     }
     // Reply with list
@@ -79,3 +84,33 @@ const get_devices = async function(ctx) {
 bot.start((ctx) => welcome(ctx));
 bot.help((ctx) => help(ctx));
 bot.command('devices', (ctx) => get_devices(ctx));
+
+
+// Callbaks
+bot.on('callback_query', (ctx) => {
+    // Get callback query value
+    const op = ctx.callbackQuery.data;
+    // Search type of value
+    if (op.includes(CALLBACK_PREFIX_DEVICE)) {
+
+        // Get device
+        const device = op.replace(CALLBACK_PREFIX_DEVICE, '');
+
+        // Delete selection message
+        ctx.deleteMessage();
+        // Selected device popup
+        ctx.answerCbQuery('Device ' + device + ' selected!');
+        
+        // Generate device data message
+        let device_data_msg = "Device " + device + ":\n\n";
+        device_data_msg += 'Fire: ' + ((dataManagement.get(device, dataManagement.FIRE) ? 'YES' : 'NO')) + '\n';
+        device_data_msg += 'Light: ' + ((dataManagement.get(device, dataManagement.LIGHT) ? 'YES' : 'NO')) + '\n';
+        device_data_msg += 'Temperature: ' + dataManagement.get(device, dataManagement.TEMPERATURE) + '° C\n';
+        device_data_msg += 'Apparent Temperature: ' + dataManagement.get(device, dataManagement.APPARENT_TEMPERATURE) + '° C\n';
+        device_data_msg += 'Humidity: ' + dataManagement.get(device, dataManagement.HUMIDITY) + '%\n';
+        // Reply w/ selected device data
+        ctx.reply(device_data_msg, { parse_mode: 'Markdown' });
+
+    }
+
+});
