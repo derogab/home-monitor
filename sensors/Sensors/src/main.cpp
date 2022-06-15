@@ -25,18 +25,18 @@
 #define LED2 D4
 // Flame Detector
 #define FLAME D1
-#define FLAME_LOG_DELAY 60000
 // DHT11 - Temperature & Humidity Sensor
 #define DHT_PIN D2
-#define DHT_TYPE DHT11  // Sensor type: DHT 11
-#define DHT_DELAY 60000 // Needed delay for DHT sensors (Warning! Min = 2000)
+#define DHT_TYPE DHT11 // Sensor type: DHT 11
 // Photoresistor
 #define PHOTORESISTOR A0            // photoresistor pin
 #define PHOTORESISTOR_THRESHOLD 900 // turn led on for light values lesser than this
-#define PHOTORESISTOR_LOG_DELAY 60000
 // WiFi signal
 #define RSSI_THRESHOLD -60 // WiFi signal strength threshold
-#define RSSI_LOG_DELAY 60000
+
+#define LOG_DELAY 60000
+#define MQTT_CONTROL_DELAY 10000
+#define AC_CONTROL_DELAY 30000
 
 #define MQTT_TOPIC_SETUP "unishare/devices/setup"
 
@@ -46,8 +46,6 @@
 #define AC_R D6
 #define AC_G D7
 #define AC_B D8
-
-#define AC_CONTROL_DELAY 60000
 
 // Init
 // --------------
@@ -110,30 +108,18 @@ String ac_previous_state;
 // Functions
 // -------------------------------
 void printWifiStatus();
-
 long connectToWiFi();
-
 void connectToMQTTBroker();
-
 void mqttMessageReceived(String &topic, String &payload);
-
 String clearMacAddress(String mac_address);
-
 void sendMqttDouble(String attribute, double value);
-
 void sendMqttLong(String attribute, long value);
-
 void sendMqttBool(String attribute, bool value);
-
 void acAutoControl();
-
-unsigned long setup_time;
-bool first_loop = true;
 
 // CODE
 void setup()
 {
-  setup_time = millis();
   // Sync Serial logs
   Serial.begin(115200);
 
@@ -187,6 +173,9 @@ void setup()
 }
 
 bool sent_setup = false;
+unsigned long last_log_time = 0;
+unsigned long last_control_time = 0;
+
 void loop()
 {
   if (!sent_setup)
@@ -211,120 +200,57 @@ void loop()
   }
   else
   {
-    long rssi = connectToWiFi(); // connect to WiFi (if not already connected)
-    connectToMQTTBroker();       // connect to MQTT broker (if not already connected)
 
-    if (!mqttClient.loop())
+    currentTime = millis();
+
+    // Check incoming mqtt controls
+    if (currentTime - last_control_time > MQTT_CONTROL_DELAY)
     {
+      connectToWiFi();
+      connectToMQTTBroker();
+
+      if (!mqttClient.loop())
+      {
 #ifdef DEBUG
-      Serial.println(mqttClient.lastError());
+        Serial.println(mqttClient.lastError());
 #endif
-      mqttClient.disconnect();
+        mqttClient.disconnect();
+      }
+      last_control_time = currentTime;
     }
 
-    String attribute = "";
-    // Get millis time
-    currentTime = millis();
-    // // Send to MQTT
-    // Check if frequency is good :)
-    if (currentTime - lastRssiLog > RSSI_LOG_DELAY)
+    // Send data periodically
+    if (currentTime - last_log_time > LOG_DELAY)
     {
-      // Update reading time
-      lastRssiLog = currentTime;
-      // Send to MQTT
+      last_log_time = currentTime;
+
+      long rssi = connectToWiFi();
+      connectToMQTTBroker();
+      String attribute = "";
+
+      // log RSSI
       attribute = "rssi";
       sendMqttLong(attribute, rssi);
-    }
-    // PHOTORESISTOR
-    // -----------------------------
-    unsigned int lightSensorValue;
-    currentTime = millis();
-    // Re-send LIGHT data sometimes :)
-    if (currentTime - lastLightLogTime > PHOTORESISTOR_LOG_DELAY)
-    {
-      // Update reading time
+
+      // log LIGHT
+      unsigned int lightSensorValue;
       lastLightLogTime = currentTime;
       lightSensorValue = analogRead(PHOTORESISTOR); // read analog value (range 0-1023)
       if (lightSensorValue >= PHOTORESISTOR_THRESHOLD)
-      { // high brightness
-        // Set the LED off
-        digitalWrite(LED1, HIGH);
-        // Update if status is changed
-        // if (data_light == false) sendBooleanDataToMQTT("light", true);
-        // Set status on memory
+      {
         data_light = true;
       }
       else
-      { // low brightness
-        // Set the LED on
-        digitalWrite(LED1, LOW);
-        // Update if status is changed
-        // if (data_light == true) sendBooleanDataToMQTT("light", false);
-        // Set status on memory
+      {
         data_light = false;
       }
-
-      // Send data to MQTT
       attribute = "light";
       sendMqttBool(attribute, data_light);
-    }
+      
+      // log TEMP/HUM
 
-    // FLAME DETECTION
-    // -----------------------------
-    // Read digital PIN of Flame Sensor
-    int fire = digitalRead(FLAME); // Read FLAME sensor
-    // Check flame level
-    if (fire == HIGH && !data_flame)
-    {
-
-#ifdef DEBUG
-      Serial.println("Fire! Fire!");
-#endif
-
-      // Save flame data
-      data_flame = true;
-
-      // Send data to MQTT
-      attribute = "flame";
-      sendMqttBool(attribute, data_flame);
-    }
-    else if (fire == LOW && data_flame)
-    {
-
-#ifdef DEBUG
-      Serial.println("No more fire!");
-#endif
-      data_flame = false;
-
-      attribute = "flame";
-      sendMqttBool(attribute, data_flame);
-    }
-    currentTime = millis();
-    // Re-send FLAME data sometimes :)
-    if (currentTime - lastFlameLogTime > FLAME_LOG_DELAY)
-    {
-
-      // Update reading time
-      lastFlameLogTime = currentTime;
-
-      attribute = "flame";
-      sendMqttBool(attribute, data_flame);
-    }
-
-    // TEMPERATURE & HUMIDITY DETECTION
-    // -------------------------------
-    currentTime = millis();
-    temp_read = false;
-    // Check if frequency is good :)
-    if (currentTime - lastTempTime > DHT_DELAY)
-    {
-
-      // Update reading time
-      lastTempTime = currentTime;
-
-      // reading temperature or humidity takes about 250 milliseconds!
-      double h = dht.readHumidity();    // humidity percentage, range 20-80% (±5% accuracy)
-      double t = dht.readTemperature(); // temperature Celsius, range 0-50°C (±2°C accuracy)
+      double h = dht.readHumidity();   
+      double t = dht.readTemperature();
 
       if (isnan(h) || isnan(t))
       { // readings failed, skip
@@ -333,7 +259,6 @@ void loop()
       }
 
       temp_read = true;
-      // compute heat index in Celsius (isFahreheit = false)
       double hic = dht.computeHeatIndex(t, h, false);
 
       data_humidity = h;
@@ -356,6 +281,32 @@ void loop()
       sendMqttDouble(attribute, data_temperature);
       attribute = "apparent_temperature";
       sendMqttDouble(attribute, data_apparent_temperature);
+
+
+    }
+
+    // Send flame data if status changed
+    int fire = digitalRead(FLAME);
+    if (fire == HIGH && !data_flame)
+    {
+
+#ifdef DEBUG
+      Serial.println("Fire! Fire!");
+#endif
+      data_flame = true;
+      String attribute = "flame";
+      sendMqttBool(attribute, data_flame);
+    }
+    else if (fire == LOW && data_flame)
+    {
+
+#ifdef DEBUG
+      Serial.println("No more fire!");
+#endif
+      data_flame = false;
+
+      String attribute = "flame";
+      sendMqttBool(attribute, data_flame);
     }
 
     // automatic AC control
@@ -375,12 +326,6 @@ void loop()
       acAutoControl();
     }
   }
-  if (first_loop){
-    unsigned long now_time_setup = millis();
-    setup_time = now_time_setup - setup_time;
-    first_loop = false;
-  }
-  Serial.println(setup_time);
 }
 
 // Functions
