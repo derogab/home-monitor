@@ -23,6 +23,10 @@ const mysqlClient = mysql.createConnection({
     database : mysql_database
 });
 
+// Init data types
+const DEVICE_TYPE_SENSOR = module.exports.DEVICE_TYPE_SENSOR = 'sensors';
+const DEVICE_TYPE_MONITOR = module.exports.DEVICE_TYPE_MONITOR = 'monitor';
+
 
 // Server connection
 const _connect = async function() {
@@ -47,7 +51,7 @@ const _connect = async function() {
 };
 
 // Devices
-const _getDevices = async function() {
+const _getDevices = async function(type = null) {
 
     // Connection
     while(!mysqlClient) {
@@ -57,22 +61,28 @@ const _getDevices = async function() {
     }
 
     // Logs
-    logger.debug('Trying to get the sensors list...');
+    logger.debug('Trying to get the devices (type = ' + type + ') list...');
+
+    // Write query
+    let mysql_query = "SELECT NAME AS name, MAC_ADDRESS as mac FROM home_monitor_devices";
+    // Or rewrite w/ specific filter
+    if (type === DEVICE_TYPE_SENSOR)  mysql_query = "SELECT NAME AS name, MAC_ADDRESS as mac FROM home_monitor_devices WHERE TYPE = 'sensors'";
+    if (type === DEVICE_TYPE_MONITOR) mysql_query = "SELECT NAME AS name, MAC_ADDRESS as mac FROM home_monitor_devices WHERE TYPE = 'screen'";
 
     // Resolve Promise
     return new Promise((resolve) => {
         // Download devices
-        mysqlClient.query("SELECT NAME AS name, MAC_ADDRESS as mac FROM home_monitor_devices WHERE TYPE = 'sensors'", function (error, results, fields) {
+        mysqlClient.query(mysql_query, function (error, results, fields) {
             if (error) {
                 // Error
-                logger.error('Error getting sensors list.');
+                logger.error('Error getting devices list.');
                 // Response
-                resolve({ sensors: [], success: false });
+                resolve({ devices: [], success: false });
             }
             // Log
-            logger.debug((results ? results.length : 0) + ' sensor(s) found!');
+            logger.debug((results ? results.length : 0) + ' device(s) found!');
             // Return data
-            resolve({ sensors: results, success: true });
+            resolve({ devices: results, success: true });
         });
     });
 

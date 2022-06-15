@@ -2,7 +2,6 @@
 const logger = require("./utils/logger");
 // Import components management
 const apiManagement = require("./components/apiManagement");
-const deviceManagement = require("./components/deviceManagement");
 const dataManagement = require("./components/dataManagement");
 
 // Import MQTT
@@ -134,16 +133,6 @@ apiManagement.get('/status/:device/humidity', function (req, res) {
         success: true,
         value: dataManagement.get(req.params.device, dataManagement.HUMIDITY).toFixed(0) || 'N/A',
     });
-});
-
-// Sensors
-apiManagement.get('/sensors', async function (req, res) {
-    // Get sensors list
-    const result = await deviceManagement.getDevices();
-    // Check if success
-    const code = (result && result.success) ? 200 : 500;
-    // Reply w/ results
-    res.status(code).json(result);
 });
 
 // Control LIGHT
