@@ -13,9 +13,6 @@ const bot_token = process.env.TELEGRAM_BOT_TOKEN;
 // Constant
 const CALLBACK_PREFIX_DEVICE = 'device_';
 
-// Globals
-let live_data = [];
-
 // Init telegram bot
 const bot = new Telegraf(bot_token);
 
@@ -28,27 +25,20 @@ const startBot = function() {
 };
 
 // Set live data
-const setLiveData = function(user, device, message_id) {
-
-    // Search in data
-    for (let i = 0; i < live_data.length; i++) {
-        const element = live_data[i];
-        // If found update the value
-        if (element.user == user) {
-            // Update the values
-            element.device = device;
-            element.message_id = message_id;
-            return;
-        }
+const setLiveData = async function(user, device, message_id) {
+    // Search if user is in users
+    const users = await dataManagement.getAllUsers();
+    let found = false;
+    for (let i = 0; i < users.length; i++) if (users[i] == user) found = true;
+    if (!found) {
+        // Add new user
+        users.push(user);
+        // Update users
+        await dataManagement.setAllUsers(users);
     }
-
-    // Save data
-    live_data.push({
-        user: user,
-        device: device,
-        message_id: message_id, 
-    });
-    
+    // Add / Update other data
+    await dataManagement.setLastDeviceByUser(user, device);
+    await dataManagement.setLastMessageIdByUser(user, message_id);
 };
 
 // Generate device status message
@@ -150,14 +140,14 @@ const get_device_info = async function(ctx) {
 const updateLiveStatus = async function() {
     // Live status counter
     let cont = 0;
+    // Get users
+    const users = await dataManagement.getAllUsers();
     // Search live status to update
-    for (let i = 0; i < live_data.length; i++) {
+    for (let i = 0; i < users.length; i++) {
         // Get data
-        const element = live_data[i];
-
-        const user = element.user;
-        const device = element.device;
-        const message_id = element.message_id;
+        const user = users[i];
+        const device = await dataManagement.getLastDeviceByUser(user);
+        const message_id = await dataManagement.getLastMessageIdByUser(user);
 
         // Generate message
         const msg_text = await generate_device_status_message(device);
@@ -202,7 +192,7 @@ bot.on('callback_query', async (ctx) => {
         // Reply w/ selected device data status
         const msg = await ctx.reply(msg_text, { parse_mode: 'Markdown' });
         // Set live data
-        setLiveData(msg.chat.id, device, msg.message_id);
+        await setLiveData(msg.chat.id, device, msg.message_id);
     }
 });
 

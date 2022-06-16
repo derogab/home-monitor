@@ -36,7 +36,7 @@ const generate_multi_key = function(key1, key2) {
     return key1 + '-' + key2;
 };
 
-// Set & Get for FIRE
+// Get & Set for FIRE
 module.exports.getFire = async function(device) {
     // Get from redis
     return (await client.get(generate_multi_key(device, FIRE)) == 'YES') ? true : false;
@@ -46,7 +46,7 @@ module.exports.setFire = async function(device, value) {
     await client.set(generate_multi_key(device, FIRE), value ? 'YES' : 'NO');
 }
 
-// Set & Get for LIGHT
+// Get & Set for LIGHT
 module.exports.getLight = async function(device) {
     // Get from redis
     return (await client.get(generate_multi_key(device, LIGHT)) == 'YES') ? true : false;
@@ -56,7 +56,7 @@ module.exports.setLight = async function(device, value) {
     await client.set(generate_multi_key(device, LIGHT), value ? 'YES' : 'NO');
 }
 
-// Set & Get for TEMPERATURE
+// Get & Set for TEMPERATURE
 module.exports.getTemperature = async function(device) {
     // Get from redis
     const redisData = await client.get(generate_multi_key(device, TEMPERATURE));
@@ -70,7 +70,7 @@ module.exports.setTemperature = async function(device, value) {
     await client.set(generate_multi_key(device, TEMPERATURE), ''+value);
 };
 
-// Set & Get for APPARENT TEMPERATURE
+// Get & Set for APPARENT TEMPERATURE
 module.exports.getApparentTemperature = async function(device) {
     // Get from redis
     const redisData = await client.get(generate_multi_key(device, APPARENT_TEMPERATURE));
@@ -84,7 +84,7 @@ module.exports.setApparentTemperature = async function(device, value) {
     await client.set(generate_multi_key(device, APPARENT_TEMPERATURE), ''+value);
 };
 
-// Set & Get for HUMIDITY
+// Get & Set for HUMIDITY
 module.exports.getHumidity = async function(device) {
     // Get from redis
     const redisData = await client.get(generate_multi_key(device, HUMIDITY));
@@ -96,4 +96,44 @@ module.exports.getHumidity = async function(device) {
 module.exports.setHumidity = async function(device, value) {
     // Save to redis
     await client.set(generate_multi_key(device, HUMIDITY), ''+value);
+};
+
+// Get & Set last device for user
+module.exports.getLastDeviceByUser = async function(user) {
+    // Get from redis
+    const device = await client.get(generate_multi_key('DEVICE', user));
+    // Return the value
+    return device || null;
+};
+module.exports.setLastDeviceByUser = async function(user, device) {
+    // Save to redis
+    await client.set(generate_multi_key('DEVICE', user), ''+device);
+};
+
+// Get & Set last message id for user
+module.exports.getLastMessageIdByUser = async function(user) {
+    // Get from redis
+    const msg = await client.get(generate_multi_key('MSG', user));
+    // Return the value
+    return msg || null;
+};
+module.exports.setLastMessageIdByUser = async function(user, msg) {
+    // Save to redis
+    await client.set(generate_multi_key('MSG', user), ''+msg);
+};
+
+// Get & Set all users
+module.exports.getAllUsers = async function() {
+    // Get from redis
+    const users_json = await client.get('USERS');
+    // Parse users
+    const users = JSON.parse(users_json);
+    // Return the users
+    return users || [];
+};
+module.exports.setAllUsers = async function(users) {
+    // Convert to JSON
+    const users_json = JSON.stringify(users);
+    // Save to redis
+    await client.set('USERS', users_json);
 };
