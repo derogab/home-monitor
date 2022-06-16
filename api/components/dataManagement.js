@@ -1,14 +1,11 @@
 // Logger
 const logger = require('../utils/logger');
 
-// Init global data variables defaults
-const mqtt_data_fire_default = false;
-const mqtt_data_light_default = false;
-const mqtt_data_temperature_default = 0;
-const mqtt_data_apparent_temperature_default = 0;
-const mqtt_data_humidity_default = 0;
-// Init global data variables array
-let data = [];
+// Import dependencies
+const redis = require('redis');
+
+// Init ENVs
+require('dotenv').config();
 
 // Init data types
 const FIRE = module.exports.FIRE = 'fire';
@@ -17,57 +14,86 @@ const TEMPERATURE = module.exports.TEMPERATURE = 'temp';
 const HUMIDITY = module.exports.HUMIDITY = 'hum';
 const APPARENT_TEMPERATURE = module.exports.APPARENT_TEMPERATURE = 'atemp';
 
-// Get data
-const _get = function(device, type) {
-    
-    // Search in data
-    for (let i = 0; i < data.length; i++) {
-        const element = data[i];
-        // Return element if found
-        if (element.type == type && element.device == device) return element.value;
-    }
+// Init redis client
+const client = redis.createClient({ 
+    url: 'redis://' + process.env.REDIS_HOST + ':' + process.env.REDIS_PORT,
+});
 
-    // Return default data instead of null
-    switch (type) {
-        case FIRE:
-            return mqtt_data_fire_default;
-        case LIGHT:
-            return mqtt_data_light_default;
-        case TEMPERATURE:
-            return mqtt_data_temperature_default;
-        case APPARENT_TEMPERATURE:
-            return mqtt_data_apparent_temperature_default;
-        case HUMIDITY:
-            return mqtt_data_humidity_default;
-        default:
-            return null;
-    }
+// Init redis callback logger
+client.on('error', (err) => logger.error('There was an error with Redis. ' + err));
+client.on('connect', () => logger.info('Successfully connected to Redis!'));
+
+// Connection
+module.exports.connect = async function () {
+    // Try to connect to redis
+    logger.debug('Trying to connect to Redis (host = ' + process.env.REDIS_HOST + ', port = ' + process.env.REDIS_PORT + ')');
+    // Redis connection
+    await client.connect();
+}
+
+// Utils: generate multi key for redis
+const generate_multi_key = function(key1, key2) {
+    return key1 + '-' + key2;
 };
 
-// Set data
-const _set = function(device, type, value) {
+// Set & Get for FIRE
+module.exports.getFire = async function(device) {
+    // Get from redis
+    return (await client.get(generate_multi_key(device, FIRE)) == 'YES') ? true : false;
+};
+module.exports.setFire = async function(device, value) {
+    // Save to redis
+    await client.set(generate_multi_key(device, FIRE), value ? 'YES' : 'NO');
+}
 
-    // Search in data
-    for (let i = 0; i < data.length; i++) {
-        const element = data[i];
-        // If found update the value
-        if (element.type == type && element.device == device) {
-            // Update the value
-            element.value = value;
-            return;
-        }
-    }
+// Set & Get for LIGHT
+module.exports.getLight = async function(device) {
+    // Get from redis
+    return (await client.get(generate_multi_key(device, LIGHT)) == 'YES') ? true : false;
+};
+module.exports.setLight = async function(device, value) {
+    // Save to redis
+    await client.set(generate_multi_key(device, LIGHT), value ? 'YES' : 'NO');
+}
 
-    // Save data
-    data.push({
-        type: type,
-        device: device,
-        value: value, 
-    });
-    
+// Set & Get for TEMPERATURE
+module.exports.getTemperature = async function(device) {
+    // Get from redis
+    const redisData = await client.get(generate_multi_key(device, TEMPERATURE));
+    // Check if isset
+    if (!redisData) return null; // return default
+    // Return the parsed value
+    return parseFloat(redisData);
+};
+module.exports.setTemperature = async function(device, value) {
+    // Save to redis
+    await client.set(generate_multi_key(device, TEMPERATURE), ''+value);
 };
 
+// Set & Get for APPARENT TEMPERATURE
+module.exports.getApparentTemperature = async function(device) {
+    // Get from redis
+    const redisData = await client.get(generate_multi_key(device, APPARENT_TEMPERATURE));
+    // Check if isset
+    if (!redisData) return null; // return default
+    // Return the parsed value
+    return parseFloat(redisData);
+};
+module.exports.setApparentTemperature = async function(device, value) {
+    // Save to redis
+    await client.set(generate_multi_key(device, APPARENT_TEMPERATURE), ''+value);
+};
 
-// Export
-module.exports.get = _get;
-module.exports.set = _set;
+// Set & Get for HUMIDITY
+module.exports.getHumidity = async function(device) {
+    // Get from redis
+    const redisData = await client.get(generate_multi_key(device, HUMIDITY));
+    // Check if isset
+    if (!redisData) return null; // return default
+    // Return the parsed value
+    return parseFloat(redisData);
+};
+module.exports.setHumidity = async function(device, value) {
+    // Save to redis
+    await client.set(generate_multi_key(device, HUMIDITY), ''+value);
+};

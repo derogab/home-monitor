@@ -59,7 +59,7 @@ mqttClient.on('connect', function () {
 });
 
 // MQTT message handler
-mqttClient.on('message', function (topic, message) {
+mqttClient.on('message', async function (topic, message) {
     // Get message
     const msg = message.toString();
     // Get JSON data
@@ -73,67 +73,67 @@ mqttClient.on('message', function (topic, message) {
         // Get fire data
         const fire = data.value || false;
         // Set fire data
-        dataManagement.set(device, dataManagement.FIRE, fire);
+        await dataManagement.setFire(device, fire);
     }
     else if (topic.includes('light')) {
         // Get light data
         const light = data.value || false;
         // Set light data
-        dataManagement.set(device, dataManagement.LIGHT, light);
+        await dataManagement.setLight(device, light);
     }
     else if (topic.includes('/temperature')) {
         // Get temperature data
         const temperature = data.value || 'N/A';
         // Set temperature data
-        dataManagement.set(device, dataManagement.TEMPERATURE, temperature);
+        await dataManagement.setTemperature(device, temperature);
     }
     else if (topic.includes('apparent_temperature')) {
         // Get apparent temperature data
         const apparent_temperature = data.value || 'N/A';
         // Set apparent temperature data
-        dataManagement.set(device, dataManagement.APPARENT_TEMPERATURE, apparent_temperature);
+        await dataManagement.setApparentTemperature(device, apparent_temperature);
     }
     else if (topic.includes('humidity')) {
         // Get humidity data
         const humidity = data.value || 'N/A';
         // Set humidity data
-        dataManagement.set(device, dataManagement.HUMIDITY, humidity);
+        await dataManagement.setHumidity(device, humidity);
     }
 });
 
 // Fire
-apiManagement.webserver.get('/status/:device/fire', function (req, res) {
+apiManagement.webserver.get('/status/:device/fire', async function (req, res) {
     res.status(200).json({
         success: true,
-        value: dataManagement.get(req.params.device, dataManagement.FIRE) || false,
+        value: await dataManagement.getFire(req.params.device) || false,
     });
 });
 // Light
-apiManagement.webserver.get('/status/:device/light', function (req, res) {
+apiManagement.webserver.get('/status/:device/light', async function (req, res) {
     res.status(200).json({
         success: true,
-        value: dataManagement.get(req.params.device, dataManagement.LIGHT) || false,
+        value: await dataManagement.getLight(req.params.device) || false,
     });
 });
 // Temperature
-apiManagement.webserver.get('/status/:device/temperature', function (req, res) {
+apiManagement.webserver.get('/status/:device/temperature', async function (req, res) {
     res.status(200).json({
         success: true,
-        value: dataManagement.get(req.params.device, dataManagement.TEMPERATURE).toFixed(2) || 'N/A',
+        value: await dataManagement.getTemperature(req.params.device).toFixed(2) || 'N/A',
     });
 });
 // Apparent Temperature
-apiManagement.webserver.get('/status/:device/apparent_temperature', function (req, res) {
+apiManagement.webserver.get('/status/:device/apparent_temperature', async function (req, res) {
     res.status(200).json({
         success: true,
-        value: dataManagement.get(req.params.device, dataManagement.APPARENT_TEMPERATURE).toFixed(2) || 'N/A',
+        value: await dataManagement.getApparentTemperature(req.params.device).toFixed(2) || 'N/A',
     });
 });
 // Humidity
-apiManagement.webserver.get('/status/:device/humidity', function (req, res) {
+apiManagement.webserver.get('/status/:device/humidity', async function (req, res) {
     res.status(200).json({
         success: true,
-        value: dataManagement.get(req.params.device, dataManagement.HUMIDITY).toFixed(0) || 'N/A',
+        value: await dataManagement.getHumidity(req.params.device).toFixed(0) || 'N/A',
     });
 });
 
@@ -220,6 +220,7 @@ apiManagement.webserver.get('/control/:mac/air/off', function (req, res) {
 
 
 // Start modules
+dataManagement.connect();
 apiManagement.startWebServer(3001);
 telegramManagement.startBot();
 cronManagement.startCron();

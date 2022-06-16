@@ -52,14 +52,14 @@ const setLiveData = function(user, device, message_id) {
 };
 
 // Generate device status message
-const generate_device_status_message = function(device) {
+const generate_device_status_message = async function(device) {
     // Generate message
     let device_data_msg  = '🌐 MAC Address: *' + device + '*\n\n';
-        device_data_msg += '🔥 Fire: ' + ((dataManagement.get(device, dataManagement.FIRE) ? 'YES' : 'NO')) + '\n';
-        device_data_msg += '🕯 Light: ' + ((dataManagement.get(device, dataManagement.LIGHT) ? 'YES' : 'NO')) + '\n\n';
-        device_data_msg += '🌡 Temperature: ' + dataManagement.get(device, dataManagement.TEMPERATURE).toFixed(2) + '° C\n';
-        device_data_msg += '💧 Humidity: ' + dataManagement.get(device, dataManagement.HUMIDITY).toFixed(0) + '%\n';
-        device_data_msg += '🥵 Apparent Temperature: ' + dataManagement.get(device, dataManagement.APPARENT_TEMPERATURE).toFixed(2) + '° C\n\n';
+        device_data_msg += '🔥 Fire: ' + ((await dataManagement.getFire(device) ? 'YES' : 'NO')) + '\n';
+        device_data_msg += '🕯 Light: ' + ((await dataManagement.getLight(device) ? 'YES' : 'NO')) + '\n\n';
+        device_data_msg += '🌡 Temperature: ' + (await dataManagement.getTemperature(device)).toFixed(2) + '° C\n';
+        device_data_msg += '💧 Humidity: ' + (await dataManagement.getHumidity(device)).toFixed(0) + '%\n';
+        device_data_msg += '🥵 Apparent Temperature: ' + (await dataManagement.getApparentTemperature(device)).toFixed(2) + '° C\n\n';
         device_data_msg += '🕙 Last update: ' + new Date().toISOString();
     
     // Return the generated message
@@ -147,7 +147,7 @@ const get_device_info = async function(ctx) {
 }
 
 // Update all live status 
-const updateLiveStatus = function() {
+const updateLiveStatus = async function() {
     // Live status counter
     let cont = 0;
     // Search live status to update
@@ -158,9 +158,13 @@ const updateLiveStatus = function() {
         const user = element.user;
         const device = element.device;
         const message_id = element.message_id;
+
+        // Generate message
+        const msg_text = await generate_device_status_message(device);
+
         // Update live status
         try {
-            bot.telegram.editMessageText(user, message_id, message_id, generate_device_status_message(device), { parse_mode: 'Markdown' });
+            bot.telegram.editMessageText(user, message_id, message_id, msg_text, { parse_mode: 'Markdown' });
         } catch (error) {
             logger.error('Failed to update live status for user ' + user);
         }
@@ -193,8 +197,10 @@ bot.on('callback_query', async (ctx) => {
         }
         // Selected device popup
         await ctx.answerCbQuery('Device ' + device + ' selected!');
+        // Generate message
+        const msg_text = await generate_device_status_message(device);
         // Reply w/ selected device data status
-        const msg = await ctx.reply(generate_device_status_message(device), { parse_mode: 'Markdown' });
+        const msg = await ctx.reply(msg_text, { parse_mode: 'Markdown' });
         // Set live data
         setLiveData(msg.chat.id, device, msg.message_id);
     }
