@@ -168,7 +168,7 @@ const updateLiveStatus = function() {
         cont += 1;
     }
     // Log
-    if (cont > 0) logger.debug('Live status (telegram) updated: ' + cont + 'active.');
+    if (cont > 0) logger.debug('Live status (telegram) updated: ' + cont + ' active.');
 }
 
 // Router
