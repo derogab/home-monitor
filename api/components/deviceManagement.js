@@ -80,7 +80,7 @@ const _getDevices = async function(type = null) {
                 resolve({ devices: [], success: false });
             }
             // Log
-            logger.debug((results ? results.length : 0) + ' device(s) found!');
+            logger.debug('Device Finder: ' + (results ? results.length : 0) + ' device(s) found!');
             // Return data
             resolve({ devices: results, success: true });
         });
