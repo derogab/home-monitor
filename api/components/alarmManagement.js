@@ -30,7 +30,7 @@ module.exports.trigger = async function(device) { // Alarm triggered
                     msg_text += 'Device: _' + device + '_\n';
                     msg_text += 'Time: _' + (new Date().toISOString()) + '_';
                 // Send simple message
-                //await telegramManagement.sendFireAlarmMessage(user, msg_text);
+                await telegramManagement.sendFireAlarmMessage(user, msg_text);
             }
         }
         // For each users, trigger alarm if enabled
