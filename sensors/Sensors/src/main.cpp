@@ -17,6 +17,7 @@
 
 // Init Mode
 #define DEBUG
+#define FORCE_MODEM_SLEEP
 
 // Sensors
 // --------------
@@ -165,11 +166,17 @@ void setup()
   serializeJson(doc_will, buffer_will);
   const char *topic_status = mqtt_topic_status.c_str();
   mqttClient.setWill(topic_status, buffer_will, true, 1);
-  mqttClient.setKeepAlive(LOG_DELAY/1000 + 2);
+  mqttClient.setKeepAlive(LOG_DELAY / 1000 + 2);
   mqttClient.setCleanSession(false);
 
 #ifdef DEBUG
   Serial.println("Setup completed!");
+#endif
+
+#ifdef FORCE_MODEM_SLEEP
+  Serial.println("Forced Modem Sleep enabled");
+#else
+  Serial.println("Auto Modem Sleep enabled");
 #endif
 
   // Init delay
@@ -352,8 +359,12 @@ void loop()
     // send modem to sleep if awake
     if (wifi_awake)
     {
+#ifdef FORCE_MODEM_SLEEP
       WiFi.mode(WIFI_OFF);
       WiFi.forceSleepBegin();
+#else 
+      delay(1); //needed for auto modem sleep
+#endif
       wifi_awake = false;
     }
   }
@@ -395,7 +406,9 @@ void printWifiStatus()
 
 void awakeConnection()
 {
+#ifdef FORCE_MODEM_SLEEP
   WiFi.forceSleepWake();
+#endif
   delay(1);
   rssi = connectToWiFi();
   connectToMQTTBroker();
