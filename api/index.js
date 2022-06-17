@@ -5,6 +5,7 @@ const apiManagement = require("./components/apiManagement");
 const dataManagement = require("./components/dataManagement");
 const telegramManagement = require("./components/telegramManagement");
 const cronManagement = require("./components/cronManagement");
+const alarmManagement = require('./components/alarmManagement');
 
 // Import MQTT
 const mqtt = require('mqtt');
@@ -74,6 +75,8 @@ mqttClient.on('message', async function (topic, message) {
         const fire = data.value || false;
         // Set fire data
         await dataManagement.setFire(device, fire);
+        // If there is fire, trigger the alarm
+        if (fire) alarmManagement.trigger(device); // no await because it takes some time
     }
     else if (topic.includes('light')) {
         // Get light data

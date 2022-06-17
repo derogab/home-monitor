@@ -1,5 +1,6 @@
 // Dependencies
 const { Telegraf } = require('telegraf');
+const sleep = require('sleep');
 // Import utils
 const logger = require('../utils/logger');
 // Import other components
@@ -12,6 +13,7 @@ require('dotenv').config();
 const bot_token = process.env.TELEGRAM_BOT_TOKEN;
 // Constant
 const CALLBACK_PREFIX_DEVICE = 'device_';
+const CALLBACK_PREFIX_ALARM = 'alarm_';
 
 // Init telegram bot
 const bot = new Telegraf(bot_token);
@@ -65,18 +67,21 @@ const help_message = function() {
     msg += "/help - the help command\n";
     msg += "/get\_devices - get all the available devices\n";
     msg += "/get\_device\_info - get info about a selectable device\n";
+    msg += "/setup\_alarm - setup the alarm\n";
     // Return the help message
     return msg;
 }
-const welcome = function(ctx) {
+const welcome = async function(ctx) {
     // Reply w/ welcome message
-    ctx.reply("👋 Welcome to *Home Monitor*!", { parse_mode: 'Markdown' });
+    await ctx.reply("👋 Welcome to *Home Monitor*!", { parse_mode: 'Markdown' });
+    // Sleep
+    sleep.sleep(2);
     // Send also the help message
-    ctx.reply(help_message());
+    await ctx.reply(help_message());
 }
-const help = function(ctx) {
+const help = async function(ctx) {
     // Reply w/ help message
-    ctx.reply(help_message());
+    await ctx.reply(help_message());
 }
 
 // Get all devices
@@ -136,6 +141,24 @@ const get_device_info = async function(ctx) {
     );
 }
 
+// Setup alarm mode
+const setup_alarm = async function(ctx) {
+    // Generate message
+    let msg  = "🔔 *Alarm Setup*\n\n";
+        msg += "If the alarm is enabled you will receive notifications whenever a fire is detected."
+    // Generate buttons
+    const keyboard = [[
+        { text: "🔔 Enable", callback_data: CALLBACK_PREFIX_ALARM + 'on' },
+        { text: "🔕 Disable", callback_data: CALLBACK_PREFIX_ALARM + 'off' },
+    ]];
+    // Reply with list
+    return ctx.reply(msg, {
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: keyboard })
+        }
+    );
+}
+
 // Update all live status 
 const updateLiveStatus = async function() {
     // Live status counter
@@ -165,16 +188,31 @@ const updateLiveStatus = async function() {
     if (cont > 0) logger.debug('Live status (telegram) updated: ' + cont + ' active.');
 }
 
+// Send FIRE alarm message to user
+const sendFireAlarmMessage = async function(user, msg) {
+    // Check if bot is OK
+    if (!bot) return;
+    // Send message
+    await bot.telegram.sendMessage(user, '🔥', { parse_mode: 'Markdown' });
+    await bot.telegram.sendMessage(user, msg, { parse_mode: 'Markdown' });
+}
+
 // Router
 bot.start((ctx) => welcome(ctx));
 bot.help((ctx) => help(ctx));
 bot.command('get_devices', (ctx) => get_devices(ctx));
 bot.command('get_device_info', (ctx) => get_device_info(ctx));
+bot.command('setup_alarm', (ctx) => setup_alarm(ctx));
 
 // Callbaks
 bot.on('callback_query', async (ctx) => {
-    // Get callback query value
-    const op = ctx.callbackQuery.data;
+    // Get callback query
+    const query = ctx.callbackQuery;
+    // Get callback value of button clicked
+    const op = query.data;
+    // Get user
+    const user = query.from.id;
+    const username = query.from.username || null;
     // Search type of value
     if (op.includes(CALLBACK_PREFIX_DEVICE)) {
         // Get device
@@ -194,8 +232,31 @@ bot.on('callback_query', async (ctx) => {
         // Set live data
         await setLiveData(msg.chat.id, device, msg.message_id);
     }
+    else if (op.includes(CALLBACK_PREFIX_ALARM)) {
+        // Get status
+        const status = op.replace(CALLBACK_PREFIX_ALARM, '');
+        // Get text status
+        const status_text = status == 'on' ? 'enabled' : 'disabled';
+        // Status popup
+        await ctx.answerCbQuery('Alarm ' + status_text + '!');
+        // Get status as boolean
+        const statusBool = (status == 'on') ? true : false;
+        // Set selected status
+        dataManagement.setAlarmSetup(user, statusBool);
+        // Reply
+        await ctx.editMessageText('🔔 Alarm ' + status_text + '!', { parse_mode: 'Markdown' });
+        // Log 
+        logger.info('User ' + user + ' ' + status_text + ' the alarm.');
+        // Sleep
+        sleep.sleep(2);
+        // If enabled, recommends enabling the other plugin
+        if (statusBool) await ctx.reply('Alarm calls can also be enabled. Authorize the _calling bot_ [by clicking here](https://api2.callmebot.com/txt/login.php) and connecting your telegram account.', { parse_mode: 'Markdown' });
+        // Save telegram user
+        if (username) await dataManagement.setTelegramUsername(user, username);
+    }
 });
 
 // Exports
 module.exports.startBot = startBot;
 module.exports.updateLiveStatus = updateLiveStatus;
+module.exports.sendFireAlarmMessage = sendFireAlarmMessage;

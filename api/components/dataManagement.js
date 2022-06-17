@@ -137,3 +137,35 @@ module.exports.setAllUsers = async function(users) {
     // Save to redis
     await client.set('USERS', users_json);
 };
+
+// Get & Set for alarm setup status
+module.exports.getAlarmSetup = async function(user) {
+    // Get from redis
+    return (await client.get(generate_multi_key('ALARM', user)) == 'ENABLED') ? true : false;
+};
+module.exports.setAlarmSetup = async function(user, value) {
+    // Save to redis
+    await client.set(generate_multi_key('ALARM', user), value ? 'ENABLED' : 'DISABLED');
+}
+
+// Get & Set for telegram username
+module.exports.getTelegramUsername = async function(user) {
+    // Get from redis
+    return await client.get(generate_multi_key('USERNAME', user));
+};
+module.exports.setTelegramUsername = async function(user, value) {
+    // Save to redis
+    await client.set(generate_multi_key('USERNAME', user), value);
+}
+
+// Get & Set for last alarm trigger time
+module.exports.getLastAlarmTriggerTime = async function() {
+    // Get from redis
+    const isoStr = await client.get('ALARM-TIME');
+    // Return the date object
+    return isoStr ? new Date(isoStr) : null;
+};
+module.exports.setLastAlarmTriggerTime = async function() {
+    // Save to redis
+    await client.set('ALARM-TIME', new Date().toISOString());
+}
