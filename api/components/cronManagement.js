@@ -12,7 +12,7 @@ const startCron = function(cronTime = 15000) {
     interval = setInterval(telegramManagement.updateLiveStatus, cronTime);
 };
 
-// Start cron
+// Stop cron
 const stopCron = function() {
     // Stop the interval
     clearInterval(interval);
