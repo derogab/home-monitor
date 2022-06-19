@@ -11,7 +11,7 @@ const liveManagement = require('./components/liveManagement');
 require('dotenv').config();
 
 // Starting 
-logger.info('Starting API...');
+logger.debug('Starting API...');
 
 // Start modules
 dataManagement.connect();
