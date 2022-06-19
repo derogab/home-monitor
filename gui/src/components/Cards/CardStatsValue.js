@@ -8,7 +8,7 @@ const CardStatsValue = ({
   statIconColor,
   deviceSelected,
 }) => {
-  const [statDataValue, setStatDataValue] = useState(false);
+  const [statDataValue, setStatDataValue] = useState('-');
 
   // Update data
   useEffect(() => {

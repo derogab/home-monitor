@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 
+// Constants
+const YES = 1;
+const NO = -1;
+const UNKNOWN = 0;
+
+// Utils
+const getText = function(status) {
+  if (status === YES) return 'YES';
+  else if (status === NO) return 'NO';
+  else if (status === UNKNOWN) return '-';
+  else return '-';
+};
+
 const CardStatsBool = ({
   statId,
   statTitle,
@@ -8,7 +21,7 @@ const CardStatsBool = ({
   statIconColor,
   deviceSelected,
 }) => {
-  const [statDataValue, setStatDataValue] = useState(false);
+  const [statDataValue, setStatDataValue] = useState(UNKNOWN);
 
   // Update data
   useEffect(() => {
@@ -32,7 +45,7 @@ const CardStatsBool = ({
         // Check if there are data
         if (!data) return;
         // Update state
-        setStatDataValue(data.value);
+        setStatDataValue(data.value ? YES : NO);
         // Log
         console.log('Update value of ' + statId + ': ' + (data.value ? "YES" : "NO"));
       })
@@ -61,7 +74,7 @@ const CardStatsBool = ({
                 {statTitle}
               </h5>
               <span className="font-semibold text-xl text-blueGray-700">
-                {statDataValue ? "YES" : "NO"}
+                {getText(statDataValue)}
               </span>
             </div>
             <div className="relative w-auto pl-4 flex-initial">
