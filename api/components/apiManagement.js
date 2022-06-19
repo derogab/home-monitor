@@ -17,7 +17,15 @@ app.use(cors({ origin: '*' }));
 // -------------------------------------
 // Generic status
 app.get('/', function (req, res) {
-    res.status(200).send('Status: UP!');
+    res.status(200).json({
+        success: true,
+        commands: [
+            '/devices',
+            '/devices/[MAC_ADDRESS]/status/[SENSOR]',
+            '/devices/[MAC_ADDRESS]/control/[SENSOR]/[ON,OFF]',
+            '/devices/[MAC_ADDRESS]/history/[SENSOR]',
+        ]
+    });
 });
 
 // DEVICES
@@ -35,35 +43,35 @@ app.get('/devices', async function (req, res) {
 // INFO (READ-ONLY)
 // -------------------------------------
 // Status informations about FIRE
-app.get('/status/:device/fire', async function (req, res) { // Fire
+app.get('/devices/:device/status/fire', async function (req, res) { // Fire
     res.status(200).json({
         success: true,
         value: await dataManagement.getFire(req.params.device) || false,
     });
 });
 // Status informations about LIGHT
-app.get('/status/:device/light', async function (req, res) { // Light
+app.get('/devices/:device/status/light', async function (req, res) { // Light
     res.status(200).json({
         success: true,
         value: await dataManagement.getLight(req.params.device) || false,
     });
 });
 // Status informations about TEMPERATURE
-app.get('/status/:device/temperature', async function (req, res) { // Temperature
+app.get('/devices/:device/status/temperature', async function (req, res) { // Temperature
     res.status(200).json({
         success: true,
         value: await dataManagement.getTemperature(req.params.device).toFixed(2) || 'N/A',
     });
 });
 // Status informations about APPARENT TEMPERATURE
-app.get('/status/:device/apparent-temperature', async function (req, res) { // Apparent Temperature
+app.get('/devices/:device/status/apparent-temperature', async function (req, res) { // Apparent Temperature
     res.status(200).json({
         success: true,
         value: await dataManagement.getApparentTemperature(req.params.device).toFixed(2) || 'N/A',
     });
 });
 // Status informations about HUMIDITY
-app.get('/status/:device/humidity', async function (req, res) { // Humidity
+app.get('/devices/:device/status/humidity', async function (req, res) { // Humidity
     res.status(200).json({
         success: true,
         value: await dataManagement.getHumidity(req.params.device).toFixed(0) || 'N/A',
@@ -74,7 +82,7 @@ app.get('/status/:device/humidity', async function (req, res) { // Humidity
 // CONTROL (WRITE)
 // -------------------------------------
 // Control LIGHT: ON
-app.get('/control/:mac/light/on', function (req, res) {
+app.get('/devices/:mac/control/light/on', function (req, res) {
     // Logs
     logger.debug('Turning ON light of ' + req.params.mac + '...');
     // Check it client is set
@@ -93,7 +101,7 @@ app.get('/control/:mac/light/on', function (req, res) {
     }
 });
 // Control LIGHT: OFF
-app.get('/control/:mac/light/off', function (req, res) {
+app.get('/devices/:mac/control/light/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF light of ' + req.params.mac + '...');
     // Check it client is set
@@ -112,7 +120,7 @@ app.get('/control/:mac/light/off', function (req, res) {
     }
 });
 // Control AIR: ON
-app.get('/control/:mac/air/on', function (req, res) {
+app.get('/devices/:mac/control/air/on', function (req, res) {
     // Logs
     logger.debug('Turning ON air of ' + req.params.mac + '...');
     // Check it client is set
@@ -131,7 +139,7 @@ app.get('/control/:mac/air/on', function (req, res) {
     }
 });
 // Control AIR: OFF
-app.get('/control/:mac/air/off', function (req, res) {
+app.get('/devices/:mac/control/air/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF air of ' + req.params.mac + '...');
     // Check it client is set
@@ -154,7 +162,7 @@ app.get('/control/:mac/air/off', function (req, res) {
 // HISTORY (READ-ONLY)
 // -------------------------------------
 // Status informations about FIRE
-app.get('/history/:device/fire', async function (req, res) { // Fire
+app.get('/devices/:device/history/fire', async function (req, res) { // Fire
 
     // Error if INFLUX is not connected
     if (!historyManagement.isConnected()) return res.status(404).json({
@@ -174,7 +182,7 @@ app.get('/history/:device/fire', async function (req, res) { // Fire
     });
 });
 // Status informations about LIGHT
-app.get('/history/:device/light', async function (req, res) { // Light
+app.get('/devices/:device/history/light', async function (req, res) { // Light
 
     // Error if INFLUX is not connected
     if (!historyManagement.isConnected()) return res.status(404).json({
@@ -194,7 +202,7 @@ app.get('/history/:device/light', async function (req, res) { // Light
     });
 });
 // Status informations about TEMPERATURE
-app.get('/history/:device/temperature', async function (req, res) { // Temperature
+app.get('/devices/:device/history/temperature', async function (req, res) { // Temperature
 
     // Error if INFLUX is not connected
     if (!historyManagement.isConnected()) return res.status(404).json({
@@ -214,7 +222,7 @@ app.get('/history/:device/temperature', async function (req, res) { // Temperatu
     });
 });
 // Status informations about APPARENT TEMPERATURE
-app.get('/history/:device/apparent-temperature', async function (req, res) { // Apparent Temperature
+app.get('/devices/:device/history/apparent-temperature', async function (req, res) { // Apparent Temperature
 
     // Error if INFLUX is not connected
     if (!historyManagement.isConnected()) return res.status(404).json({
@@ -234,7 +242,7 @@ app.get('/history/:device/apparent-temperature', async function (req, res) { // 
     });
 });
 // Status informations about HUMIDITY
-app.get('/history/:device/humidity', async function (req, res) { // Humidity
+app.get('/devices/:device/history/humidity', async function (req, res) { // Humidity
 
     // Error if INFLUX is not connected
     if (!historyManagement.isConnected()) return res.status(404).json({
