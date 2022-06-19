@@ -15,13 +15,11 @@
 #define DISPLAY_MODE_N 6
 #define DISPLAY_REFRESH_RATE 5000
 
-#define incPin D3
-#define decPin D4
-#define ALARM_BUTTON D5
+#define INC_PIN D3
 #define DEVICE_BUTTON D6
 #define BUTTON_DEBOUNCE_DELAY 200 // button debounce time in ms
-
-#define BUZZER D8
+#define USER_DELAY 30000
+#define CONNECTION_TIMEOUT_CUSTOM 15000
 
 #define MQTT_BUFFER_SIZE 2048            // the maximum size for packets being published and received
 MQTTClient mqttClient(MQTT_BUFFER_SIZE); // handles the MQTT communication protocol
@@ -50,26 +48,19 @@ volatile byte displayMode = 0;
 volatile int device_index = 0;
 
 volatile unsigned long last_interrupt_inc = 0;
-volatile unsigned long last_interrupt_dec = 0;
-volatile unsigned long last_interrupt_alarm = 0;
 volatile unsigned long last_interrupt_devices_display = 0;
+volatile unsigned long last_user_interaction = 0;
 
 unsigned long last_refresh = 0;
-
-volatile bool alarm_active = true;
-volatile bool change_alarm = false;
-bool flame;
 
 sensors_t all_sensors[10];
 int number_of_devices = 0;
 
-void connectToWiFi();
-void IRAM_ATTR alarmInterrupt();
+bool connectToWiFi();
 void IRAM_ATTR deviceDisplayInterrupt();
 void IRAM_ATTR isrInc();
-void IRAM_ATTR isrDec();
 void printDisplayInfo();
-void connectToMQTTBroker();
+bool connectToMQTTBroker();
 void mqttMessageReceived(String &topic, String &payload);
 String clearMacAddress(String mac_address);
 
@@ -83,17 +74,10 @@ void setup()
   byte error = Wire.endTransmission();
 
   // set BUTTON pin as input with pull-up
-  pinMode(ALARM_BUTTON, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(ALARM_BUTTON), alarmInterrupt, FALLING);
   pinMode(DEVICE_BUTTON, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(DEVICE_BUTTON), deviceDisplayInterrupt, FALLING);
-  pinMode(incPin, INPUT_PULLUP);
-  pinMode(decPin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(incPin), isrInc, FALLING);
-  attachInterrupt(digitalPinToInterrupt(decPin), isrDec, FALLING);
-
-  pinMode(BUZZER, OUTPUT);
-  digitalWrite(BUZZER, LOW);
+  pinMode(INC_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(INC_PIN), isrInc, FALLING);
 
   if (error == 0)
   {
@@ -147,49 +131,62 @@ void loop()
 {
   if (!sent_setup)
   {
-    connectToWiFi();       // connect to WiFi (if not already connected)
-    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
-    DynamicJsonDocument doc(256);
-    doc["mac_address"] = mac_address;
-    doc["type"] = "screen";
-    doc["name"] = "schermo1";
-    char buffer[256];
-    size_t n = serializeJson(doc, buffer);
+    if (connectToWiFi())
+    {
+      if (connectToMQTTBroker())
+      {
+        DynamicJsonDocument doc(256);
+        doc["mac_address"] = mac_address;
+        doc["type"] = "screen";
+        doc["name"] = "schermo1";
+        char buffer[256];
+        size_t n = serializeJson(doc, buffer);
 
 #ifdef DEBUG
-    Serial.print(F("JSON setup message: "));
-    Serial.println(buffer);
+        Serial.print(F("JSON setup message: "));
+        Serial.println(buffer);
 #endif
 
-    if (mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
-    {
-      sent_setup = true;
+        if (mqttClient.publish(MQTT_TOPIC_SETUP, buffer, n, false, 1))
+        {
+          sent_setup = true;
+        }
+      }
     }
   }
   else
   {
-    connectToWiFi();       // connect to WiFi (if not already connected)
-    connectToMQTTBroker(); // connect to MQTT broker (if not already connected)
-
-    if (!mqttClient.loop())
+    if (connectToWiFi())
     {
+      if (connectToMQTTBroker())
+      {
+        if (!mqttClient.loop())
+        {
 #ifdef DEBUG
-      Serial.println(mqttClient.lastError());
+          Serial.println(mqttClient.lastError());
 #endif
-      mqttClient.disconnect();
-    }
+          mqttClient.disconnect();
+        }
 
-    if (alarm_active && flame)
-      digitalWrite(BUZZER, HIGH);
-    else
-      digitalWrite(BUZZER, LOW);
-
-    unsigned long now = millis();
-    if (now - last_refresh > DISPLAY_REFRESH_RATE)
-    {
-      printDisplayInfo();
-      last_refresh = now;
+        unsigned long now = millis();
+        if (now - last_refresh > DISPLAY_REFRESH_RATE)
+        {
+          printDisplayInfo();
+          last_refresh = now;
+        }
+      }
     }
+  }
+  unsigned long now = millis();
+  if (now - last_user_interaction > USER_DELAY)
+  {
+#ifdef DEBUG
+    Serial.println("Going to sleep");
+#endif
+    mqttClient.disconnect();
+    lcd.clear();
+    lcd.noBacklight();
+    ESP.deepSleep(0);
   }
 }
 
@@ -197,6 +194,7 @@ void loop()
 void isrInc()
 {
   unsigned long now = millis();
+  last_user_interaction = now;
   if (now - last_interrupt_inc > BUTTON_DEBOUNCE_DELAY)
   {
     displayMode++;
@@ -211,49 +209,10 @@ void isrInc()
   }
 }
 
-void isrDec()
-{
-  unsigned long now = millis();
-  if (now - last_interrupt_dec > BUTTON_DEBOUNCE_DELAY)
-  {
-    if (displayMode == 0)
-      displayMode = DISPLAY_MODE_N - 1;
-    else
-      displayMode--;
-
-#ifdef DEBUG
-    Serial.printf("DisplayMode: %d \n", displayMode);
-#endif
-
-    last_interrupt_dec = now;
-    printDisplayInfo();
-  }
-}
-
-void IRAM_ATTR alarmInterrupt()
-{
-  unsigned long now = millis();
-  if (now - last_interrupt_alarm > BUTTON_DEBOUNCE_DELAY)
-  {
-    alarm_active = !alarm_active;
-    last_interrupt_alarm = now;
-    change_alarm = true;
-
-    lcd.home();
-    lcd.clear();
-    lcd.printf("Alarm state:");
-    lcd.setCursor(0, 1);
-    lcd.printf("%s", alarm_active ? "ON" : "OFF");
-
-    if (alarm_active && flame)
-      digitalWrite(BUZZER, HIGH);
-    else
-      digitalWrite(BUZZER, LOW);
-  }
-}
-
 void IRAM_ATTR deviceDisplayInterrupt()
 {
+  unsigned long now = millis();
+  last_user_interaction = now;
   if (number_of_devices == 0)
   {
     lcd.home();
@@ -261,7 +220,6 @@ void IRAM_ATTR deviceDisplayInterrupt()
     lcd.printf("No devices");
     return;
   }
-  unsigned long now = millis();
   if (now - last_interrupt_devices_display > BUTTON_DEBOUNCE_DELAY)
   {
     last_interrupt_devices_display = now;
@@ -325,7 +283,7 @@ void printDisplayInfo()
   }
 }
 
-void connectToWiFi()
+bool connectToWiFi()
 {
   // connect to WiFi (if not already connected)
   if (WiFi.status() != WL_CONNECTED)
@@ -340,38 +298,59 @@ void connectToWiFi()
 #endif
 
     WiFi.begin(ssid, pass);
-    while (WiFi.status() != WL_CONNECTED)
+    unsigned long wifi_now = millis();
+    unsigned long wifi_start_time = millis();
+    while (WiFi.status() != WL_CONNECTED && (wifi_now - wifi_start_time < CONNECTION_TIMEOUT_CUSTOM))
     {
 #ifdef DEBUG
       Serial.print(F("."));
 #endif
       delay(250);
+      wifi_now = millis();
     }
 
 #ifdef DEBUG
-    Serial.println(F("\nConnected!"));
+    if (WiFi.status() != WL_CONNECTED)
+      Serial.println(F("\nFailed to connect to wifi"));
+    else
+      Serial.println(F("\nConnected!"));
 #endif
+    if (WiFi.status() != WL_CONNECTED)
+      return false;
+    else
+      return true;
   }
+  return true;
 }
 
-void connectToMQTTBroker()
+bool connectToMQTTBroker()
 {
   if (!mqttClient.connected())
   { // not connected
 #ifdef DEBUG
     Serial.print(F("\nConnecting to MQTT broker..."));
 #endif
-    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD))
+    unsigned long mqtt_now = millis();
+    unsigned long mqtt_start_time = millis();
+    while (!mqttClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD) && (mqtt_now - mqtt_start_time < CONNECTION_TIMEOUT_CUSTOM))
     {
 #ifdef DEBUG
       Serial.print(F("."));
 #endif
       delay(200);
+      mqtt_now = millis();
     }
+    if (!mqttClient.connected())
+    {
+#ifdef DEBUG
+      Serial.println(F("\nFailed to connect to MQTT"));
+#endif
+      return false;
+    }
+
 #ifdef DEBUG
     Serial.println(F("\nConnected!"));
 #endif
-
     // connected to broker, subscribe topics
     mqttClient.subscribe(MQTT_TOPIC_DEVICES, 1);
     String topic_sensors = String(MQTT_TOPIC_SENSORS) + "#";
@@ -389,7 +368,9 @@ void connectToMQTTBroker()
     size_t n = serializeJson(doc_stat, buffer_stat);
     const char *topic_status = mqtt_topic_my_status.c_str();
     mqttClient.publish(topic_status, buffer_stat, n, true, 1);
+    return true;
   }
+  return true;
 }
 
 void mqttMessageReceived(String &topic, String &payload)
@@ -456,7 +437,7 @@ void mqttMessageReceived(String &topic, String &payload)
       }
     }
 
-    if (i ==  10)
+    if (i == 10)
       return;
 
     if (data_type == "humidity")
@@ -477,14 +458,6 @@ void mqttMessageReceived(String &topic, String &payload)
     if (data_type == "flame")
     {
       all_sensors[index].flame = sensor_doc["value"].as<bool>();
-      if (sensor_doc["value"].as<bool>())
-      {
-        flame = true;
-      }
-      else
-      {
-        flame = false;
-      }
       return;
     }
     if (data_type == "light")
@@ -517,7 +490,7 @@ void mqttMessageReceived(String &topic, String &payload)
         break;
       }
     }
-    if (i==10)
+    if (i == 10)
       return;
     all_sensors[index].status = stat_doc["connected"].as<bool>();
     return;
