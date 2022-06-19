@@ -63,7 +63,7 @@ module.exports.getTemperature = async function(device) {
     // Check if isset
     if (!redisData) return null; // return default
     // Return the parsed value
-    return parseFloat(redisData);
+    return parseFloat(redisData).toFixed(2);
 };
 module.exports.setTemperature = async function(device, value) {
     // Save to redis
@@ -77,7 +77,7 @@ module.exports.getApparentTemperature = async function(device) {
     // Check if isset
     if (!redisData) return null; // return default
     // Return the parsed value
-    return parseFloat(redisData);
+    return parseFloat(redisData).toFixed(2);
 };
 module.exports.setApparentTemperature = async function(device, value) {
     // Save to redis
@@ -91,7 +91,7 @@ module.exports.getHumidity = async function(device) {
     // Check if isset
     if (!redisData) return null; // return default
     // Return the parsed value
-    return parseFloat(redisData);
+    return parseFloat(redisData).toFixed(0);
 };
 module.exports.setHumidity = async function(device, value) {
     // Save to redis
