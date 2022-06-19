@@ -5,7 +5,7 @@ const apiManagement = require("./components/apiManagement");
 const dataManagement = require("./components/dataManagement");
 const telegramManagement = require("./components/telegramManagement");
 const cronManagement = require("./components/cronManagement");
-const listenerManagement = require('./components/listenerManagement');
+const liveManagement = require('./components/liveManagement');
 
 // Init ENVs
 require('dotenv').config();
@@ -18,4 +18,4 @@ dataManagement.connect();
 apiManagement.startWebServer(3001);
 telegramManagement.startBot();
 cronManagement.startCron();
-listenerManagement.startListener();
+liveManagement.startListener();

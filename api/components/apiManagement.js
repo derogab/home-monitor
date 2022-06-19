@@ -7,7 +7,7 @@ const logger = require('../utils/logger');
 // Import other components
 const dataManagement = require('./dataManagement');
 const deviceManagement = require('./deviceManagement');
-const listenerManagement = require('./listenerManagement');
+const liveManagement = require('./liveManagement');
 
 // Init CORS
 app.use(cors({ origin: '*' }));
@@ -77,9 +77,9 @@ app.get('/control/:mac/light/on', function (req, res) {
     // Logs
     logger.debug('Turning ON light of ' + req.params.mac + '...');
     // Check it client is set
-    if (listenerManagement.areDeviceListening()) {
+    if (liveManagement.areDeviceListening()) {
         // Send MQTT message
-        listenerManagement.publish('unishare/control/' + req.params.mac + '/light', '{"control": "on"}');
+        liveManagement.publish('unishare/control/' + req.params.mac + '/light', '{"control": "on"}');
         // Send response
         res.status(200).json({ status: 'ON', success: true });
         // Log
@@ -96,9 +96,9 @@ app.get('/control/:mac/light/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF light of ' + req.params.mac + '...');
     // Check it client is set
-    if (listenerManagement.areDeviceListening()) {
+    if (liveManagement.areDeviceListening()) {
         // Send MQTT message
-        listenerManagement.publish('unishare/control/' + req.params.mac + '/light', '{"control": "off"}');
+        liveManagement.publish('unishare/control/' + req.params.mac + '/light', '{"control": "off"}');
         // Send response
         res.status(200).json({ status: 'OFF', success: true });
         // Log
@@ -115,9 +115,9 @@ app.get('/control/:mac/air/on', function (req, res) {
     // Logs
     logger.debug('Turning ON air of ' + req.params.mac + '...');
     // Check it client is set
-    if (listenerManagement.areDeviceListening()) {
+    if (liveManagement.areDeviceListening()) {
         // Send MQTT message
-        listenerManagement.publish('unishare/control/' + req.params.mac + '/ac', '{"control": "on"}');
+        liveManagement.publish('unishare/control/' + req.params.mac + '/ac', '{"control": "on"}');
         // Send response
         res.status(200).json({ status: 'ON', success: true });
         // Log
@@ -134,9 +134,9 @@ app.get('/control/:mac/air/off', function (req, res) {
     // Logs
     logger.debug('Turning OFF air of ' + req.params.mac + '...');
     // Check it client is set
-    if (listenerManagement.areDeviceListening()) {
+    if (liveManagement.areDeviceListening()) {
         // Send MQTT message
-        listenerManagement.publish('unishare/control/' + req.params.mac + '/ac', '{"control": "off"}');
+        liveManagement.publish('unishare/control/' + req.params.mac + '/ac', '{"control": "off"}');
         // Send response
         res.status(200).json({ status: 'OFF', success: true });
         // Log
