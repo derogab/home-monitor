@@ -8,6 +8,7 @@ const logger = require('../utils/logger');
 const dataManagement = require('./dataManagement');
 const deviceManagement = require('./deviceManagement');
 const liveManagement = require('./liveManagement');
+const historyManagement = require('./historyManagement');
 
 // Init CORS
 app.use(cors({ origin: '*' }));
@@ -55,7 +56,7 @@ app.get('/status/:device/temperature', async function (req, res) { // Temperatur
     });
 });
 // Status informations about APPARENT TEMPERATURE
-app.get('/status/:device/apparent_temperature', async function (req, res) { // Apparent Temperature
+app.get('/status/:device/apparent-temperature', async function (req, res) { // Apparent Temperature
     res.status(200).json({
         success: true,
         value: await dataManagement.getApparentTemperature(req.params.device).toFixed(2) || 'N/A',
@@ -149,6 +150,109 @@ app.get('/control/:mac/air/off', function (req, res) {
     }
 });
 
+
+// HISTORY (READ-ONLY)
+// -------------------------------------
+// Status informations about FIRE
+app.get('/history/:device/fire', async function (req, res) { // Fire
+
+    // Error if INFLUX is not connected
+    if (!historyManagement.isConnected()) return res.status(404).json({
+        success: false,
+        value: null
+    });
+
+    // Get fire history
+    const response = await historyManagement.getFireHistory(req.params.device);
+    // Get code and success
+    const code = response ? 200 : 404;
+    
+    // Reply
+    return res.status(code).json({
+        success: true,
+        value: response,
+    });
+});
+// Status informations about LIGHT
+app.get('/history/:device/light', async function (req, res) { // Light
+
+    // Error if INFLUX is not connected
+    if (!historyManagement.isConnected()) return res.status(404).json({
+        success: false,
+        value: null
+    });
+
+    // Get light history
+    const response = await historyManagement.getLightHistory(req.params.device);
+    // Get code and success
+    const code = response ? 200 : 404;
+    
+    // Reply
+    return res.status(code).json({
+        success: true,
+        value: response,
+    });
+});
+// Status informations about TEMPERATURE
+app.get('/history/:device/temperature', async function (req, res) { // Temperature
+
+    // Error if INFLUX is not connected
+    if (!historyManagement.isConnected()) return res.status(404).json({
+        success: false,
+        value: null
+    });
+
+    // Get temperature history
+    const response = await historyManagement.getTemperatureHistory(req.params.device);
+    // Get code and success
+    const code = response ? 200 : 404;
+    
+    // Reply
+    return res.status(code).json({
+        success: true,
+        value: response,
+    });
+});
+// Status informations about APPARENT TEMPERATURE
+app.get('/history/:device/apparent-temperature', async function (req, res) { // Apparent Temperature
+
+    // Error if INFLUX is not connected
+    if (!historyManagement.isConnected()) return res.status(404).json({
+        success: false,
+        value: null
+    });
+
+    // Get apparent temperature history
+    const response = await historyManagement.getApparentTemperatureHistory(req.params.device);
+    // Get code and success
+    const code = response ? 200 : 404;
+    
+    // Reply
+    return res.status(code).json({
+        success: true,
+        value: response,
+    });
+});
+// Status informations about HUMIDITY
+app.get('/history/:device/humidity', async function (req, res) { // Humidity
+
+    // Error if INFLUX is not connected
+    if (!historyManagement.isConnected()) return res.status(404).json({
+        success: false,
+        value: null
+    });
+
+    // Get humidity history
+    const response = await historyManagement.getHumidityHistory(req.params.device);
+    // Get code and success
+    const code = response ? 200 : 404;
+    
+    // Reply
+    return res.status(code).json({
+        success: true,
+        value: response,
+    });
+});
 
 // Export app
 module.exports.webserver = app;

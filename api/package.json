@@ -9,6 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@influxdata/influxdb-client": "^1.26.0",
     "@ptkdev/logger": "^1.8.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.1",
