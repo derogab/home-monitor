@@ -57,9 +57,19 @@ const subscribe = module.exports.subscribe = function(topic) {
 
 
 // Callbacks
-const on_connected = function() {
+const on_connected = async function() {
+    
+    // Get devices
+    let result = null;
+    do {
+        // Get devices list
+        result = await deviceManagement.getDevices(deviceManagement.DEVICE_TYPE_SENSOR);
+    } while (!result || !result.success);
+    const devices = result.devices || [];
+
     // Connected to MQTT broker
     logger.debug('Subscribing to all MQTT topics for each devices...');
+    
     // Subscribe to all topics for each devices
     for (let i = 0; i < devices.length; i++) {
         const device = devices[i];
@@ -125,14 +135,6 @@ module.exports.startListener = async function() {
     // Connected to MQTT broker
     logger.debug('Try to subscribe to all useful MQTT topics.');
     
-    // Get devices
-    let result = null;
-    do {
-        // Get devices list
-        result = await deviceManagement.getDevices(deviceManagement.DEVICE_TYPE_SENSOR);
-    } while (!result || !result.success);
-    const devices = result.devices || [];
-
     // MQTT connection handler
     mqttClient.on('connect', on_connected);
 
