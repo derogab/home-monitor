@@ -20,7 +20,7 @@ const CardControl = ({
         // Set status
         const status = (!value) ? 'on' : 'off';
         // Send local request to API
-        const resss = await fetch('http://localhost:3001/control/807D3A42D1C5/' + statId + '/' + status, {
+        const resss = await fetch('http://localhost:3001/devices/' + deviceSelected + '/control/' + statId + '/' + status, {
           method: 'GET',
           headers: {
             "Access-Control-Allow-Origin": "*",

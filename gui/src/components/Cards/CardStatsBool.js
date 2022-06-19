@@ -14,7 +14,7 @@ const CardStatsBool = ({
   useEffect(() => {
     const interval = setInterval(() => {
 
-      fetch('http://localhost:3001/' + statId, {
+      if (deviceSelected) fetch('http://localhost:3001/devices/' + deviceSelected + '/status/' + statId, {
         method: 'GET',
         headers: {
           "Content-Type": "application/json",

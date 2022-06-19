@@ -77,7 +77,7 @@ export default function HeaderStats() {
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
                 <CardStatsValue
-                  statId="apparent_temperature"
+                  statId="apparent-temperature"
                   statTitle="Apparent"
                   statData="1234"
                   statIconName="fas fa-thermometer-half"
