@@ -1,7 +1,7 @@
 {
   "name": "home-monitor-api",
-  "version": "1.0.0",
-  "description": "An API interface to command MQTT and retrieve data",
+  "version": "3.0.0",
+  "description": "Home Monitor API - More info on github.com/derogab/home-monitor",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -9,16 +9,16 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@influxdata/influxdb-client": "^1.26.0",
-    "@ptkdev/logger": "^1.8.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.0.1",
-    "express": "^4.18.1",
-    "got": "^9.6.0",
-    "mqtt": "^4.3.7",
-    "mysql": "^2.18.1",
-    "redis": "^4.1.0",
-    "sleep": "^6.3.0",
-    "telegraf": "^4.8.5"
+    "@influxdata/influxdb-client": "1.26.0",
+    "@ptkdev/logger": "1.8.0",
+    "cors": "2.8.5",
+    "dotenv": "16.0.1",
+    "express": "4.18.1",
+    "got": "9.6.0",
+    "mqtt": "4.3.7",
+    "mysql": "2.18.1",
+    "redis": "4.1.0",
+    "sleep": "6.3.0",
+    "telegraf": "4.8.5"
   }
 }

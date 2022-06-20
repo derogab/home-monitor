@@ -1,8 +1,8 @@
 {
-  "name": "notus-react",
-  "version": "1.1.0",
-  "description": "Notus React - A free Tailwind CSS and React UI Kit and Admin by Creative Tim.",
-  "repository": "https://github.com/creativetimofficial/notus-react",
+  "name": "home-monitor-gui",
+  "version": "3.0.0",
+  "description": "Home Monitor GUI - More info on github.com/derogab/home-monitor",
+  "repository": "https://github.com/derogab/home-monitor",
   "license": "MIT",
   "dependencies": {
     "@fortawesome/fontawesome-free": "5.15.3",
