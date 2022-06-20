@@ -53,9 +53,10 @@ export default function Sidebar() {
               </div>
             </div>
 
-            {/* Heading */}
+
+            {/* [MAIN] Heading */}
             <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-1 pb-4 no-underline">
-              Main Tools
+              Main Panel
             </h6>
             {/* Navigation */}
 
@@ -82,51 +83,162 @@ export default function Sidebar() {
                 </Link>
               </li>
 
+            </ul>
+
+
+            {/* [HISTORY] Heading */}
+            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-1 pb-4 no-underline">
+              Historic Data
+            </h6>
+            {/* Navigation */}
+
+            <ul className="md:flex-col md:min-w-full flex flex-col list-none">
               <li className="items-center">
                 <Link
                   className={
-                    "display-none text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/settings") !== -1
+                    "text-xs uppercase py-3 font-bold block " +
+                    (window.location.href.indexOf("/temperature") !== -1
                       ? "text-lightBlue-500 hover:text-lightBlue-600"
                       : "text-blueGray-700 hover:text-blueGray-500")
                   }
-                  to="/settings"
+                  to="/temperature"
                 >
                   <i
                     className={
-                      "fas fa-tools mr-2 text-sm " +
-                      (window.location.href.indexOf("/settings") !== -1
+                      "fas fa-thermometer-empty mr-2 text-sm " +
+                      (window.location.href.indexOf("/temperature") !== -1
                         ? "opacity-75"
                         : "text-blueGray-300")
                     }
                   ></i>{" "}
-                  Settings
+                  Temperature
                 </Link>
               </li>
 
               <li className="items-center">
                 <Link
                   className={
-                    "display-none text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/tables") !== -1
+                    "text-xs uppercase py-3 font-bold block " +
+                    (window.location.href.indexOf("/apparent-temperature") !== -1
                       ? "text-lightBlue-500 hover:text-lightBlue-600"
                       : "text-blueGray-700 hover:text-blueGray-500")
                   }
-                  to="/tables"
+                  to="/apparent-temperature"
                 >
                   <i
                     className={
-                      "fas fa-table mr-2 text-sm " +
-                      (window.location.href.indexOf("/tables") !== -1
+                      "fas fa-thermometer-half mr-2 text-sm " +
+                      (window.location.href.indexOf("/apparent-temperature") !== -1
                         ? "opacity-75"
                         : "text-blueGray-300")
                     }
                   ></i>{" "}
-                  Tables
+                  Apparent Temperature
                 </Link>
               </li>
 
-            </ul>   
+              <li className="items-center">
+                <Link
+                  className={
+                    "text-xs uppercase py-3 font-bold block " +
+                    (window.location.href.indexOf("/humidity") !== -1
+                      ? "text-lightBlue-500 hover:text-lightBlue-600"
+                      : "text-blueGray-700 hover:text-blueGray-500")
+                  }
+                  to="/humidity"
+                >
+                  <i
+                    className={
+                      "fas fa-tint mr-2 text-sm " +
+                      (window.location.href.indexOf("/humidity") !== -1
+                        ? "opacity-75"
+                        : "text-blueGray-300")
+                    }
+                  ></i>{" "}
+                  Humidity
+                </Link>
+              </li>
+
+              <li className="items-center">
+                <Link
+                  className={
+                    "text-xs uppercase py-3 font-bold block " +
+                    (window.location.href.indexOf("/light") !== -1
+                      ? "text-lightBlue-500 hover:text-lightBlue-600"
+                      : "text-blueGray-700 hover:text-blueGray-500")
+                  }
+                  to="/light"
+                >
+                  <i
+                    className={
+                      "fas fa-lightbulb mr-2 text-sm " +
+                      (window.location.href.indexOf("/light") !== -1
+                        ? "opacity-75"
+                        : "text-blueGray-300")
+                    }
+                  ></i>{" "}
+                  Light
+                </Link>
+              </li>
+
+              <li className="items-center">
+                <Link
+                  className={
+                    "text-xs uppercase py-3 font-bold block " +
+                    (window.location.href.indexOf("/fire") !== -1
+                      ? "text-lightBlue-500 hover:text-lightBlue-600"
+                      : "text-blueGray-700 hover:text-blueGray-500")
+                  }
+                  to="/fire"
+                >
+                  <i
+                    className={
+                      "fas fa-fire mr-2 text-sm " +
+                      (window.location.href.indexOf("/fire") !== -1
+                        ? "opacity-75"
+                        : "text-blueGray-300")
+                    }
+                  ></i>{" "}
+                  Fire
+                </Link>
+              </li>
+
+            </ul>
+
+            {/* [EXTRA] Heading */}
+            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-1 pb-4 no-underline">
+              Extra
+            </h6>
+            {/* Navigation */}
+
+            <ul className="md:flex-col md:min-w-full flex flex-col list-none">
+              <li className="items-center">
+                <Link
+                  className={
+                    "text-xs uppercase py-3 font-bold block " +
+                    (window.location.href.indexOf("/about") !== -1
+                      ? "text-lightBlue-500 hover:text-lightBlue-600"
+                      : "text-blueGray-700 hover:text-blueGray-500")
+                  }
+                  to="/about"
+                >
+                  <i
+                    className={
+                      "fas fa-user-friends mr-2 text-sm " +
+                      (window.location.href.indexOf("/about") !== -1
+                        ? "opacity-75"
+                        : "text-blueGray-300")
+                    }
+                  ></i>{" "}
+                  About US
+                </Link>
+              </li>
+
+            </ul>
+
+
+
+
           </div>
         </div>
       </nav>
