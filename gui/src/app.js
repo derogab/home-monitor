@@ -10,19 +10,23 @@ import "assets/styles/custom.css";
 import Navbar from "components/Navbars/Navbar.js";
 import Sidebar from "components/Sidebar/Sidebar.js";
 import HeaderStats from "components/Headers/HeaderStats.js";
-import FooterAdmin from "components/Footers/FooterAdmin.js";
+import Footer from "components/Footers/Footer.js";
 
 // views
 
 import Dashboard from "views/Dashboard.js";
-import Settings from "views/Settings.js";
-import Tables from "views/Tables.js";
+import DataApparentTemperature from "views/DataApparentTemperature";
+import DataTemperature from "views/DataTemperature";
+import DataHumidity from "views/DataHumidity";
+import DataLight from "views/DataLight";
+import DataFire from "views/DataFire";
+import About from "views/About.js";
 
 
 export default function App() {
 
   // Init stateful
-  const [deviceState, setDeviceState] = useState(null);
+  const [deviceSelected, setDevice] = useState(null);
 
   // Render app
   return (
@@ -32,15 +36,19 @@ export default function App() {
           <div className="relative md:ml-64 bg-blueGray-100">
               <Navbar />
               {/* Header */}
-              <HeaderStats deviceState={deviceState} deviceSetState={setDeviceState} />
+              <HeaderStats deviceSelected={deviceSelected} setDevice={setDevice} />
               <div className="px-4 md:px-10 mx-auto w-full -m-24">
-              <Switch device={deviceState}>
+              <Switch>
                 <Route path="/dashboard" exact component={Dashboard} />
-                <Route path="/settings" exact component={Settings} />
-                <Route path="/tables" exact component={Tables} />
+                <Route path="/temperature" exact render={(props) => <DataTemperature deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/apparent-temperature" exact render={(props) => <DataApparentTemperature deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/humidity" exact render={(props) => <DataHumidity deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/light" exact render={(props) => <DataLight deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/fire" exact render={(props) => <DataFire deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/about" exact component={About} />
                 <Redirect from="/" to="/dashboard" />
               </Switch>
-              <FooterAdmin />
+              <Footer />
               </div>
           </div>
       </BrowserRouter>

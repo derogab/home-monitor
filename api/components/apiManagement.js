@@ -60,21 +60,21 @@ app.get('/devices/:device/status/light', async function (req, res) { // Light
 app.get('/devices/:device/status/temperature', async function (req, res) { // Temperature
     res.status(200).json({
         success: true,
-        value: await dataManagement.getTemperature(req.params.device).toFixed(2) || 'N/A',
+        value: await dataManagement.getTemperature(req.params.device) || 'N/A',
     });
 });
 // Status informations about APPARENT TEMPERATURE
 app.get('/devices/:device/status/apparent-temperature', async function (req, res) { // Apparent Temperature
     res.status(200).json({
         success: true,
-        value: await dataManagement.getApparentTemperature(req.params.device).toFixed(2) || 'N/A',
+        value: await dataManagement.getApparentTemperature(req.params.device) || 'N/A',
     });
 });
 // Status informations about HUMIDITY
 app.get('/devices/:device/status/humidity', async function (req, res) { // Humidity
     res.status(200).json({
         success: true,
-        value: await dataManagement.getHumidity(req.params.device).toFixed(0) || 'N/A',
+        value: await dataManagement.getHumidity(req.params.device) || 'N/A',
     });
 });
 

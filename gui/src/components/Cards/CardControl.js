@@ -7,6 +7,7 @@ const CardControl = ({
   statTitle,
   statIconName,
   statIconColor,
+  deviceSelected,
 }) => {
   // Init stateful
   const [value, setValue] = useState(false);
@@ -19,7 +20,7 @@ const CardControl = ({
         // Set status
         const status = (!value) ? 'on' : 'off';
         // Send local request to API
-        const resss = await fetch('http://localhost:3001/control/807D3A42D1C5/' + statId + '/' + status, {
+        const resss = await fetch('http://localhost:3001/devices/' + deviceSelected + '/control/' + statId + '/' + status, {
           method: 'GET',
           headers: {
             "Access-Control-Allow-Origin": "*",
@@ -65,6 +66,7 @@ CardControl.defaultProps = {
   statTitle: "Example",
   statIconName: "far fa-chart-bar",
   statIconColor: "bg-red-500",
+  deviceSelected: null,
 };
 
 CardControl.propTypes = {
@@ -76,6 +78,8 @@ CardControl.propTypes = {
   // can be any of the background color utilities
   // from tailwindcss
   statIconColor: PropTypes.string,
+  // selected device
+  deviceSelected: PropTypes.string,
 };
 
 export default CardControl;

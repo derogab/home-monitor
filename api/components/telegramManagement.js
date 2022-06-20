@@ -45,13 +45,18 @@ const setLiveData = async function(user, device, message_id) {
 
 // Generate device status message
 const generate_device_status_message = async function(device) {
+    // Get float data
+    const temperature = await dataManagement.getTemperature(device);
+    const humidity = await dataManagement.getHumidity(device);
+    const apparent_temperature = await dataManagement.getApparentTemperature(device);
+
     // Generate message
     let device_data_msg  = '🌐 MAC Address: *' + device + '*\n\n';
         device_data_msg += '🔥 Fire: ' + ((await dataManagement.getFire(device) ? 'YES' : 'NO')) + '\n';
         device_data_msg += '🕯 Light: ' + ((await dataManagement.getLight(device) ? 'YES' : 'NO')) + '\n\n';
-        device_data_msg += '🌡 Temperature: ' + (await dataManagement.getTemperature(device)).toFixed(2) + '° C\n';
-        device_data_msg += '💧 Humidity: ' + (await dataManagement.getHumidity(device)).toFixed(0) + '%\n';
-        device_data_msg += '🥵 Apparent Temperature: ' + (await dataManagement.getApparentTemperature(device)).toFixed(2) + '° C\n\n';
+        device_data_msg += '🌡 Temperature: ' + (temperature ? (temperature + '° C') : 'N/A') + '\n';
+        device_data_msg += '💧 Humidity: ' + (humidity ? (humidity + '%') : 'N/A') + '\n';
+        device_data_msg += '🥵 Apparent Temperature: ' + (apparent_temperature ? (apparent_temperature + '° C') : 'N/A') + '\n\n';
         device_data_msg += '🕙 Last update: ' + new Date().toISOString();
     
     // Return the generated message

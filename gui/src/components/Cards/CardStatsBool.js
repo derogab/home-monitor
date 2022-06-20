@@ -1,19 +1,33 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 
+// Constants
+const YES = 1;
+const NO = -1;
+const UNKNOWN = 0;
+
+// Utils
+const getText = function(status) {
+  if (status === YES) return 'YES';
+  else if (status === NO) return 'NO';
+  else if (status === UNKNOWN) return '-';
+  else return '-';
+};
+
 const CardStatsBool = ({
   statId,
   statTitle,
   statIconName,
   statIconColor,
+  deviceSelected,
 }) => {
-  const [statDataValue, setStatDataValue] = useState(false);
-  
+  const [statDataValue, setStatDataValue] = useState(UNKNOWN);
+
   // Update data
   useEffect(() => {
-    setInterval(() => {
-      
-      fetch('http://localhost:3001/' + statId, {
+    const interval = setInterval(() => {
+
+      if (deviceSelected) fetch('http://localhost:3001/devices/' + deviceSelected + '/status/' + statId, {
         method: 'GET',
         headers: {
           "Content-Type": "application/json",
@@ -31,7 +45,7 @@ const CardStatsBool = ({
         // Check if there are data
         if (!data) return;
         // Update state
-        setStatDataValue(data.value);
+        setStatDataValue(data.value ? YES : NO);
         // Log
         console.log('Update value of ' + statId + ': ' + (data.value ? "YES" : "NO"));
       })
@@ -40,7 +54,14 @@ const CardStatsBool = ({
       });
 
     }, 3000);
-  }, [statId]);
+
+    return () => {
+
+      clearInterval(interval);
+
+    };
+
+  }, [statId, deviceSelected]);
 
   // Print data
   return (
@@ -53,7 +74,7 @@ const CardStatsBool = ({
                 {statTitle}
               </h5>
               <span className="font-semibold text-xl text-blueGray-700">
-                {statDataValue ? "YES" : "NO"}
+                {getText(statDataValue)}
               </span>
             </div>
             <div className="relative w-auto pl-4 flex-initial">
@@ -78,6 +99,7 @@ CardStatsBool.defaultProps = {
   statTitle: "Example",
   statIconName: "far fa-chart-bar",
   statIconColor: "bg-red-500",
+  deviceSelected: null,
 };
 
 CardStatsBool.propTypes = {
@@ -89,6 +111,8 @@ CardStatsBool.propTypes = {
   // can be any of the background color utilities
   // from tailwindcss
   statIconColor: PropTypes.string,
+  // selected device
+  deviceSelected: PropTypes.string,
 };
 
 export default CardStatsBool;

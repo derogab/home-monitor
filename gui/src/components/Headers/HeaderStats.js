@@ -7,7 +7,8 @@ import CardStatsValue from "components/Cards/CardStatsValue.js";
 import CardControl from "components/Cards/CardControl.js";
 import CardSelector from "components/Cards/CardSelector.js";
 
-export default function HeaderStats() {
+export default function HeaderStats({ deviceSelected, setDevice }) {
+
   // Render Header Stats
   return (
     <>
@@ -25,6 +26,7 @@ export default function HeaderStats() {
                   statData="1234"
                   statIconName="fas fa-lightbulb"
                   statIconColor="bg-yellow-500"
+                  deviceSelected={deviceSelected}
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
@@ -34,6 +36,7 @@ export default function HeaderStats() {
                   statData="1234"
                   statIconName="fas fa-fire"
                   statIconColor="bg-red-500"
+                  deviceSelected={deviceSelected}
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
@@ -42,6 +45,7 @@ export default function HeaderStats() {
                   statTitle="Light Control"
                   statIconName="fas fa-lightbulb"
                   statIconColor="bg-lightBlue-500"
+                  deviceSelected={deviceSelected}
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
@@ -50,6 +54,7 @@ export default function HeaderStats() {
                   statTitle="Air Conditioning"
                   statIconName="fas fa-undo"
                   statIconColor="bg-orange-500"
+                  deviceSelected={deviceSelected}
                 />
               </div>
             </div>
@@ -64,15 +69,17 @@ export default function HeaderStats() {
                   statData="1234"
                   statIconName="fas fa-thermometer-empty"
                   statIconColor="bg-lightBlue-500"
+                  deviceSelected={deviceSelected}
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
                 <CardStatsValue
-                  statId="apparent_temperature"
+                  statId="apparent-temperature"
                   statTitle="Apparent"
                   statData="1234"
                   statIconName="fas fa-thermometer-half"
                   statIconColor="bg-lightBlue-500"
+                  deviceSelected={deviceSelected}
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
@@ -82,12 +89,14 @@ export default function HeaderStats() {
                   statData="1234"
                   statIconName="fas fa-tint"
                   statIconColor="bg-lightBlue-500"
+                  deviceSelected={deviceSelected}
                 />
               </div>
               <div className="w-full lg:w-6/12 xl:w-3/12 px-4">
                 <CardSelector
                   statId="device"
                   statTitle="Device"
+                  onChangeCallback={setDevice}
                 />
               </div>
             </div>

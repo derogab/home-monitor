@@ -53,9 +53,10 @@ export default function Sidebar() {
               </div>
             </div>
 
-            {/* Heading */}
-            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-1 pb-4 no-underline">
-              Main Tools
+
+            {/* [MAIN] Heading */}
+            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-2 pb-2 no-underline">
+              Main Panel
             </h6>
             {/* Navigation */}
 
@@ -63,70 +64,137 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/dashboard") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
                   to="/dashboard"
                 >
                   <i
                     className={
-                      "fas fa-tv mr-2 text-sm " +
-                      (window.location.href.indexOf("/dashboard") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-tv mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
                   Dashboard
                 </Link>
               </li>
 
+            </ul>
+
+
+            {/* [HISTORY] Heading */}
+            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-2 pb-2 no-underline">
+              Historic Data
+            </h6>
+            {/* Navigation */}
+
+            <ul className="md:flex-col md:min-w-full flex flex-col list-none">
               <li className="items-center">
                 <Link
                   className={
-                    "display-none text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/settings") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
-                  to="/settings"
+                  to="/temperature"
                 >
                   <i
                     className={
-                      "fas fa-tools mr-2 text-sm " +
-                      (window.location.href.indexOf("/settings") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-thermometer-empty mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
-                  Settings
+                  Temperature
                 </Link>
               </li>
 
               <li className="items-center">
                 <Link
                   className={
-                    "display-none text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/tables") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
-                  to="/tables"
+                  to="/apparent-temperature"
                 >
                   <i
                     className={
-                      "fas fa-table mr-2 text-sm " +
-                      (window.location.href.indexOf("/tables") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-thermometer-half mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
-                  Tables
+                  Apparent Temperature
                 </Link>
               </li>
 
-            </ul>   
+              <li className="items-center">
+                <Link
+                  className={
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
+                  }
+                  to="/humidity"
+                >
+                  <i
+                    className={
+                      "fas fa-tint mr-2 text-sm opacity-75"
+                    }
+                  ></i>{" "}
+                  Humidity
+                </Link>
+              </li>
+
+              <li className="items-center">
+                <Link
+                  className={
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
+                  }
+                  to="/light"
+                >
+                  <i
+                    className={
+                      "fas fa-lightbulb mr-2 text-sm opacity-75"
+                    }
+                  ></i>{" "}
+                  Light
+                </Link>
+              </li>
+
+              <li className="items-center">
+                <Link
+                  className={
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
+                  }
+                  to="/fire"
+                >
+                  <i
+                    className={
+                      "fas fa-fire mr-2 text-sm opacity-75"
+                    }
+                  ></i>{" "}
+                  Fire
+                </Link>
+              </li>
+
+            </ul>
+
+            {/* [EXTRA] Heading */}
+            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-2 pb-2 no-underline">
+              Extra
+            </h6>
+            {/* Navigation */}
+
+            <ul className="md:flex-col md:min-w-full flex flex-col list-none">
+              <li className="items-center">
+                <Link
+                  className={
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
+                  }
+                  to="/about"
+                >
+                  <i
+                    className={
+                      "fas fa-user-friends mr-2 text-sm opacity-75"
+                    }
+                  ></i>{" "}
+                  About US
+                </Link>
+              </li>
+
+            </ul>
+
+
           </div>
         </div>
       </nav>

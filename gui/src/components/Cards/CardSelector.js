@@ -6,7 +6,7 @@ import AsyncSelect from 'react-select/async';
 const promiseOptions = () =>
   new Promise((resolve) => {
 
-    fetch('http://localhost:3001/sensors', {
+    fetch('http://localhost:3001/devices', {
       method: 'GET',
       headers: {
         "Content-Type": "application/json",
@@ -24,13 +24,13 @@ const promiseOptions = () =>
       // Check if there are data
       if (!data) return [];
       // Get sensors
-      const sensors = data.sensors || [];
+      const sensors = data.devices || [];
       // Check if there are sensors
       if (!sensors) return [];
       // Fix data
       let selectable = [];
-      for (let i = 0; i < data.sensors.length; i++) {
-        const sensor = data.sensors[i];
+      for (let i = 0; i < sensors.length; i++) {
+        const sensor = sensors[i];
         // Append to selectable
         selectable.push({
           value: sensor.mac,
@@ -50,6 +50,7 @@ const promiseOptions = () =>
 const CardSelector = ({
   statId,
   statTitle,
+  onChangeCallback,
 }) => {
   // Init stateful
   const [value, setValue] = useState(1);
@@ -62,6 +63,8 @@ const CardSelector = ({
     const selectedOption = e.value; 
     // Log
     console.log('CardSelector / Selected: ', selectedOption);
+    // Callback
+    onChangeCallback(selectedOption);
   };
 
   // Print data
@@ -88,11 +91,13 @@ const CardSelector = ({
 CardSelector.defaultProps = {
   statId: '1234',
   statTitle: "Example",
+  onChangeCallback: null
 };
 
 CardSelector.propTypes = {
   statId: PropTypes.string,
   statTitle: PropTypes.string,
+  onChangeCallback: PropTypes.func
 };
 
 export default CardSelector;
