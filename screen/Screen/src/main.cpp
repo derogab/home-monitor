@@ -237,6 +237,7 @@ void IRAM_ATTR deviceDisplayInterrupt()
     Serial.print(F("Device to display: "));
     Serial.println(mac_string);
 #endif
+    last_refresh = now;
   }
 }
 
