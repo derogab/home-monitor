@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import Chart from "chart.js";
 
-export default function CardLineChart({deviceSelected, dataType}) {
+export default function CardLineChart({deviceSelected, dataType, color}) {
 
   // Set axis
   const [x, setX] = useState([]);
@@ -54,8 +54,8 @@ export default function CardLineChart({deviceSelected, dataType}) {
           datasets: [
             {
               label: dataType.toUpperCase(),
-              backgroundColor: "#4c51bf",
-              borderColor: "#4c51bf",
+              backgroundColor: color,
+              borderColor: color,
               data: y,
               fill: false,
             },
@@ -147,7 +147,7 @@ export default function CardLineChart({deviceSelected, dataType}) {
 
     };
 
-  }, [dataType, deviceSelected, x, y]);
+  }, [dataType, deviceSelected, x, y, color]);
 
 
   return (
@@ -176,6 +176,7 @@ export default function CardLineChart({deviceSelected, dataType}) {
 
 CardLineChart.propTypes = {
   dataType: PropTypes.string,
+  color: PropTypes.string,
   // selected device
   deviceSelected: PropTypes.string,
 };

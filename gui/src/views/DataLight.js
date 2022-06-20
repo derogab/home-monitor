@@ -9,7 +9,7 @@ export default function DataLight({ deviceSelected }) {
     <>
       <div className="flex flex-wrap">
         <div className="w-full xl:w-12/12 mb-12 xl:mb-0 px-4">
-          <CardLineChart deviceSelected={deviceSelected} dataType="light" />
+          <CardLineChart deviceSelected={deviceSelected} dataType="light" color="#f39c12" />
         </div>
       </div>
     </>

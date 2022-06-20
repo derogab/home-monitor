@@ -9,7 +9,7 @@ export default function DataApparentTemperature({ deviceSelected }) {
     <>
       <div className="flex flex-wrap">
         <div className="w-full xl:w-12/12 mb-12 xl:mb-0 px-4">
-          <CardLineChart deviceSelected={deviceSelected} dataType="apparent-temperature" />
+          <CardLineChart deviceSelected={deviceSelected} dataType="apparent-temperature" color="#16a085"/>
         </div>
       </div>
     </>

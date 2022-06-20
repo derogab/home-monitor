@@ -9,7 +9,7 @@ export default function DataTemperature({ deviceSelected }) {
     <>
       <div className="flex flex-wrap">
         <div className="w-full xl:w-12/12 mb-12 xl:mb-0 px-4">
-          <CardLineChart deviceSelected={deviceSelected} dataType="temperature" />
+          <CardLineChart deviceSelected={deviceSelected} dataType="temperature" color="#2ecc71" />
         </div>
       </div>
     </>
