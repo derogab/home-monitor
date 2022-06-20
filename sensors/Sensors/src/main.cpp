@@ -17,7 +17,7 @@
 
 // Init Mode
 #define DEBUG
-#define FORCE_MODEM_SLEEP
+//#define FORCE_MODEM_SLEEP
 
 // Sensors
 // --------------
@@ -36,7 +36,7 @@
 #define RSSI_THRESHOLD -60 // WiFi signal strength threshold
 
 #define LOG_DELAY 60000
-#define MQTT_CONTROL_DELAY 10000
+#define MQTT_CONTROL_DELAY 0
 #define AC_CONTROL_DELAY 30000
 
 #define MQTT_TOPIC_SETUP "unishare/devices/setup"
