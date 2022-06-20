@@ -96,6 +96,7 @@ export default function HeaderStats({ deviceSelected, setDevice }) {
                 <CardSelector
                   statId="device"
                   statTitle="Device"
+                  deviceSelected={deviceSelected}
                   onChangeCallback={setDevice}
                 />
               </div>

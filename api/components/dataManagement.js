@@ -169,3 +169,13 @@ module.exports.setLastAlarmTriggerTime = async function() {
     // Save to redis
     await client.set('ALARM-TIME', new Date().toISOString());
 }
+
+// Get & Set for device status
+module.exports.getDeviceStatus = async function(mac) {
+    // Get from redis
+    return (await client.get(generate_multi_key('DEVICESTATUS', mac)) == 'YES') ? true : false;
+};
+module.exports.setDeviceStatus = async function(mac, value) {
+    // Save to redis
+    await client.set(generate_multi_key('DEVICESTATUS', mac), value ? 'YES' : 'NO');
+}

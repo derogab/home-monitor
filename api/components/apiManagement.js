@@ -40,6 +40,14 @@ app.get('/devices', async function (req, res) {
     res.status(code).json(result);
 });
 
+// Status informations about the device
+app.get('/devices/:device', async function (req, res) { // Humidity
+    res.status(200).json({
+        success: true,
+        value: await dataManagement.getDeviceStatus(req.params.device) || false,
+    });
+});
+
 // INFO (READ-ONLY)
 // -------------------------------------
 // Status informations about FIRE

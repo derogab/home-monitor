@@ -82,6 +82,7 @@ const on_connected = async function() {
         subscribe('unishare/sensors/' + device.mac + '/temperature');
         subscribe('unishare/sensors/' + device.mac + '/apparent_temperature');
         subscribe('unishare/sensors/' + device.mac + '/humidity'); 
+        subscribe('unishare/devices/status/' + device.mac); 
     }
 };
 
@@ -126,6 +127,15 @@ const on_message = async function (topic, message) {
         const humidity = data.value || 'N/A';
         // Set humidity data
         await dataManagement.setHumidity(device, humidity);
+    }
+    else if (topic.includes('status')) {
+        // Get mac address 
+        const mac = topic.split('/')[3];
+        // Get device status data
+        const status = data.connected || false;
+        // Set device status data
+        console.log('Set device status to ', status, mac)
+        await dataManagement.setDeviceStatus(mac, status);
     }
 };
 

@@ -51,7 +51,7 @@ const _connect = async function() {
 };
 
 // Devices
-const _getDevices = async function(type = null) {
+module.exports.getDevices = async function(type = null) {
 
     // Connection
     while(!mysqlClient) {
@@ -88,6 +88,6 @@ const _getDevices = async function(type = null) {
 
 };
 
+module.exports.getStatusDevice = function(mac) {
 
-// Export
-module.exports.getDevices = _getDevices;
+};

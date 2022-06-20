@@ -17,3 +17,17 @@
 .space {
     height: 30px;
 }
+
+div.is-alive {
+    background-color: #2ecc71;
+}
+h5.is-alive {
+    color: white !important;
+}
+
+div.is-not-alive {
+    background-color: #e74c3ce6;
+}
+h5.is-not-alive {
+    color: #34495e !important;
+}
