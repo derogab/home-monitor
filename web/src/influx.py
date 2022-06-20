@@ -2,7 +2,7 @@ from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 def main():
-    influxClient = InfluxDBClient.from_config_file("influx_config.ini")
+    influxClient = InfluxDBClient.from_env_properties()
     buckets_api = influxClient.buckets_api()
 
     bucket_name = "test-py-bucket"

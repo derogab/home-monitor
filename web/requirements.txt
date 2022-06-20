@@ -10,3 +10,5 @@ requests==2.27.1
 Rx==3.2.0
 six==1.16.0
 urllib3==1.26.9
+PyMySQL==1.0.2
+python-dotenv==0.20.0
