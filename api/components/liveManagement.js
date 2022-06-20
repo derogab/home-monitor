@@ -134,8 +134,9 @@ const on_message = async function (topic, message) {
         // Get device status data
         const status = data.connected || false;
         // Set device status data
-        console.log('Set device status to ', status, mac)
         await dataManagement.setDeviceStatus(mac, status);
+        // Log
+        logger.debug('Set device ' + mac + ' status to ' + status);
     }
 };
 
