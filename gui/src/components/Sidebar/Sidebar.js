@@ -144,10 +144,7 @@ export default function Sidebar() {
                 >
                   <i
                     className={
-                      "fas fa-lightbulb mr-2 text-sm " +
-                      (window.location.href.indexOf("/light") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-lightbulb mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
                   Light
