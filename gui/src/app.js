@@ -20,8 +20,7 @@ import DataTemperature from "views/DataTemperature";
 import DataHumidity from "views/DataHumidity";
 import DataLight from "views/DataLight";
 import DataFire from "views/DataFire";
-import Settings from "views/Settings.js";
-import Tables from "views/Tables.js";
+import About from "views/About.js";
 
 
 export default function App() {
@@ -46,8 +45,7 @@ export default function App() {
                 <Route path="/humidity" exact render={(props) => <DataHumidity deviceSelected={deviceSelected} {...props} /> } />
                 <Route path="/light" exact render={(props) => <DataLight deviceSelected={deviceSelected} {...props} /> } />
                 <Route path="/fire" exact render={(props) => <DataFire deviceSelected={deviceSelected} {...props} /> } />
-                <Route path="/settings" exact component={Settings} />
-                <Route path="/tables" exact component={Tables} />
+                <Route path="/about" exact component={About} />
                 <Redirect from="/" to="/dashboard" />
               </Switch>
               <Footer />
