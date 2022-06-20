@@ -22,10 +22,10 @@ export default function Footer() {
               <ul className="flex flex-wrap list-none md:justify-end  justify-center">
                 <li>
                   <a
-                    href="/about"
+                    href="https://github.com/derogab/home-monitor/"
                     className="text-blueGray-600 hover:text-blueGray-800 text-sm font-semibold block py-1 px-3"
                   >
-                    About Us
+                    GitHub
                   </a>
                 </li>
                 <li>
