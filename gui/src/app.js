@@ -22,7 +22,7 @@ import Tables from "views/Tables.js";
 export default function App() {
 
   // Init stateful
-  const [deviceState, setDeviceState] = useState(null);
+  const [deviceSelected, setDevice] = useState(null);
 
   // Render app
   return (
@@ -32,9 +32,9 @@ export default function App() {
           <div className="relative md:ml-64 bg-blueGray-100">
               <Navbar />
               {/* Header */}
-              <HeaderStats deviceState={deviceState} deviceSetState={setDeviceState} />
+              <HeaderStats deviceSelected={deviceSelected} setDevice={setDevice} />
               <div className="px-4 md:px-10 mx-auto w-full -m-24">
-              <Switch device={deviceState}>
+              <Switch deviceSelected={deviceSelected}>
                 <Route path="/dashboard" exact component={Dashboard} />
                 <Route path="/settings" exact component={Settings} />
                 <Route path="/tables" exact component={Tables} />

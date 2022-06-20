@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 // components
 
@@ -7,10 +7,7 @@ import CardStatsValue from "components/Cards/CardStatsValue.js";
 import CardControl from "components/Cards/CardControl.js";
 import CardSelector from "components/Cards/CardSelector.js";
 
-export default function HeaderStats() {
-
-  // Init stateful
-  const [deviceSelected, setDevice] = useState(null);
+export default function HeaderStats({ deviceSelected, setDevice }) {
 
   // Render Header Stats
   return (
