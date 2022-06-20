@@ -3,7 +3,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 
 
 def getInfluxClient():
-    influxClient = InfluxDBClient.from_config_file("influx_config.ini")
+    influxClient = InfluxDBClient.from_env_properties()
     return influxClient
 
 

@@ -139,7 +139,7 @@ export default function CardLineChart({deviceSelected, dataType, color}) {
       window.myLine = new Chart(ctx, config);
 
 
-    }, 3000);
+    }, 5000);
 
     return () => {
 

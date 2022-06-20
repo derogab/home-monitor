@@ -22,7 +22,8 @@ services:
     restart: always
     container_name: home-monitor-api
     build:
-      context: .
+      context: ./api
+      dockerfile: Dockerfile
     ports:
       - 3001:3001
     depends_on:
@@ -30,9 +31,29 @@ services:
     links:
       - hm.cache
     env_file:
-      - .env
+      - ./api/.env
     environment:
       REDIS_HOST: hm.cache
       REDIS_PORT: 6379
     networks:
       - hm.net
+
+  hm.gui:
+    restart: always
+    container_name: home-monitor-gui
+    build:
+      context: ./gui
+      dockerfile: Dockerfile
+    ports:
+      - 3000:80
+    depends_on:
+      - hm.api
+      - hm.daemon
+
+  hm.daemon:
+    restart: always
+    container_name: home-monitor-daemon
+    build:
+      context: ./daemon
+    env_file:
+      - ./daemon/.env
