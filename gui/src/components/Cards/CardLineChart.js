@@ -85,7 +85,7 @@ export default function CardLineChart({deviceSelected, dataType, color}) {
           },
           hover: {
             mode: "nearest",
-            intersect: true,
+            intersect: false,
           },
           scales: {
             xAxes: [
