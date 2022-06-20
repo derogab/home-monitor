@@ -37,7 +37,10 @@ logger.info('Connected to MQTT broker.');
 // Utils
 module.exports.publish = function(topic, message) {
     // Just send to MQTT
-    mqttClient.publish(topic, message);
+    mqttClient.publish(topic, message, {
+        qos: 1,
+        retain: true,
+    });
 };
 
 module.exports.areDeviceListening = function() {
