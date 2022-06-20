@@ -9,13 +9,7 @@ export default function Footer() {
           <div className="flex flex-wrap items-center md:justify-between justify-center">
             <div className="w-full md:w-4/12 px-4">
               <div className="text-sm text-blueGray-500 font-semibold py-1 text-center md:text-left">
-                Copyright © {new Date().getFullYear()}{" - "}
-                <a
-                  href="/about"
-                  className="text-blueGray-500 hover:text-blueGray-700 text-sm font-semibold py-1"
-                >
-                  Unishare Team
-                </a>
+                Copyright © {new Date().getFullYear()}{" - Unishare Team"}
               </div>
             </div>
             <div className="w-full md:w-8/12 px-4">
