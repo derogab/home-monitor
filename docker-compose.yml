@@ -48,6 +48,7 @@ services:
       - 3000:80
     depends_on:
       - hm.api
+      - hm.daemon
 
   hm.daemon:
     restart: always
