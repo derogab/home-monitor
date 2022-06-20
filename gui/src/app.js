@@ -10,7 +10,7 @@ import "assets/styles/custom.css";
 import Navbar from "components/Navbars/Navbar.js";
 import Sidebar from "components/Sidebar/Sidebar.js";
 import HeaderStats from "components/Headers/HeaderStats.js";
-import FooterAdmin from "components/Footers/FooterAdmin.js";
+import Footer from "components/Footers/Footer.js";
 
 // views
 
@@ -40,7 +40,7 @@ export default function App() {
                 <Route path="/tables" exact component={Tables} />
                 <Redirect from="/" to="/dashboard" />
               </Switch>
-              <FooterAdmin />
+              <Footer />
               </div>
           </div>
       </BrowserRouter>
