@@ -21,9 +21,10 @@ app.get('/', function (req, res) {
         success: true,
         commands: [
             '/devices',
+            '/devices/[MAC_ADDRESS]',
             '/devices/[MAC_ADDRESS]/status/[SENSOR]',
-            '/devices/[MAC_ADDRESS]/control/[SENSOR]/[ON,OFF]',
             '/devices/[MAC_ADDRESS]/history/[SENSOR]',
+            '/devices/[MAC_ADDRESS]/control/[SENSOR]/[ON,OFF]',
         ]
     });
 });
