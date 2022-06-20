@@ -50,7 +50,7 @@ module.exports.areDeviceListening = function() {
 
 const subscribe = module.exports.subscribe = function(topic) {
     // Subscribe to a topic
-    if (mqttClient) mqttClient.subscribe(topic, function (err) {
+    if (mqttClient) mqttClient.subscribe(topic, { qos: 1 }, function (err) {
         if (!err) logger.info('Subscribed to topic ' + topic + '.');
         else logger.warning('Failed to subscribe to topic ' + topic + '.');
     });
