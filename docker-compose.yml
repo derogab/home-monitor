@@ -48,3 +48,11 @@ services:
       - 3000:80
     depends_on:
       - hm.api
+
+  hm.daemon:
+    restart: always
+    container_name: home-monitor-daemon
+    build:
+      context: ./daemon
+    env_file:
+      - ./daemon/.env
