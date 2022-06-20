@@ -15,6 +15,11 @@ import Footer from "components/Footers/Footer.js";
 // views
 
 import Dashboard from "views/Dashboard.js";
+import DataApparentTemperature from "views/DataApparentTemperature";
+import DataTemperature from "views/DataTemperature";
+import DataHumidity from "views/DataHumidity";
+import DataLight from "views/DataLight";
+import DataFire from "views/DataFire";
 import Settings from "views/Settings.js";
 import Tables from "views/Tables.js";
 
@@ -34,8 +39,13 @@ export default function App() {
               {/* Header */}
               <HeaderStats deviceSelected={deviceSelected} setDevice={setDevice} />
               <div className="px-4 md:px-10 mx-auto w-full -m-24">
-              <Switch deviceSelected={deviceSelected}>
+              <Switch>
                 <Route path="/dashboard" exact component={Dashboard} />
+                <Route path="/temperature" exact render={(props) => <DataTemperature deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/apparent-temperature" exact render={(props) => <DataApparentTemperature deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/humidity" exact render={(props) => <DataHumidity deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/light" exact render={(props) => <DataLight deviceSelected={deviceSelected} {...props} /> } />
+                <Route path="/fire" exact render={(props) => <DataFire deviceSelected={deviceSelected} {...props} /> } />
                 <Route path="/settings" exact component={Settings} />
                 <Route path="/tables" exact component={Tables} />
                 <Redirect from="/" to="/dashboard" />
