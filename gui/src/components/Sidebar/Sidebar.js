@@ -55,7 +55,7 @@ export default function Sidebar() {
 
 
             {/* [MAIN] Heading */}
-            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-1 pb-4 no-underline">
+            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-2 pb-2 no-underline">
               Main Panel
             </h6>
             {/* Navigation */}
@@ -64,19 +64,13 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/dashboard") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
                   to="/dashboard"
                 >
                   <i
                     className={
-                      "fas fa-tv mr-2 text-sm " +
-                      (window.location.href.indexOf("/dashboard") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-tv mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
                   Dashboard
@@ -87,7 +81,7 @@ export default function Sidebar() {
 
 
             {/* [HISTORY] Heading */}
-            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-1 pb-4 no-underline">
+            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-2 pb-2 no-underline">
               Historic Data
             </h6>
             {/* Navigation */}
@@ -96,19 +90,13 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/temperature") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
                   to="/temperature"
                 >
                   <i
                     className={
-                      "fas fa-thermometer-empty mr-2 text-sm " +
-                      (window.location.href.indexOf("/temperature") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-thermometer-empty mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
                   Temperature
@@ -118,19 +106,13 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/apparent-temperature") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
                   to="/apparent-temperature"
                 >
                   <i
                     className={
-                      "fas fa-thermometer-half mr-2 text-sm " +
-                      (window.location.href.indexOf("/apparent-temperature") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-thermometer-half mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
                   Apparent Temperature
@@ -140,19 +122,13 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/humidity") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
                   to="/humidity"
                 >
                   <i
                     className={
-                      "fas fa-tint mr-2 text-sm " +
-                      (window.location.href.indexOf("/humidity") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-tint mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
                   Humidity
@@ -162,10 +138,7 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/light") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
                   to="/light"
                 >
@@ -184,19 +157,13 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/fire") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
                   to="/fire"
                 >
                   <i
                     className={
-                      "fas fa-fire mr-2 text-sm " +
-                      (window.location.href.indexOf("/fire") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-fire mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
                   Fire
@@ -206,7 +173,7 @@ export default function Sidebar() {
             </ul>
 
             {/* [EXTRA] Heading */}
-            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-1 pb-4 no-underline">
+            <h6 className="md:min-w-full text-blueGray-500 text-xs uppercase font-bold block pt-2 pb-2 no-underline">
               Extra
             </h6>
             {/* Navigation */}
@@ -215,19 +182,13 @@ export default function Sidebar() {
               <li className="items-center">
                 <Link
                   className={
-                    "text-xs uppercase py-3 font-bold block " +
-                    (window.location.href.indexOf("/about") !== -1
-                      ? "text-lightBlue-500 hover:text-lightBlue-600"
-                      : "text-blueGray-700 hover:text-blueGray-500")
+                    "text-xs uppercase py-3 font-bold block text-blueGray-700 hover:text-lightBlue-600"
                   }
                   to="/about"
                 >
                   <i
                     className={
-                      "fas fa-user-friends mr-2 text-sm " +
-                      (window.location.href.indexOf("/about") !== -1
-                        ? "opacity-75"
-                        : "text-blueGray-300")
+                      "fas fa-user-friends mr-2 text-sm opacity-75"
                     }
                   ></i>{" "}
                   About US
@@ -235,8 +196,6 @@ export default function Sidebar() {
               </li>
 
             </ul>
-
-
 
 
           </div>
